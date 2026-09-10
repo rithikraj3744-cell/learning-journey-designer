@@ -28,11 +28,7 @@ const CompetencyScoreModal = ({ competency, isOpen, onClose }) => {
         path: `users/${currentUser.uid}/competencyProgress/${competency.id}`
       });
 
-      // Add smaller delay for first load
-      if (retry === 0) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Reduced from 1500ms
-      }
-
+      // NO DELAY - Load immediately
       const progressData = await getCompetencyProgress(currentUser.uid, competency.id);
 
       console.log('📊 Progress data loaded:', {
@@ -45,6 +41,7 @@ const CompetencyScoreModal = ({ competency, isOpen, onClose }) => {
       });
 
       setProgress(progressData);
+      setLoading(false); // Stop loading immediately after fetch
 
       if (progressData && progressData.weakAreas) {
         const recs = getTopicRecommendations(progressData.weakAreas, competency.label || competency.name);
@@ -57,17 +54,7 @@ const CompetencyScoreModal = ({ competency, isOpen, onClose }) => {
           recommendations: []
         });
       } else {
-        // No data found, only retry once
-        if (retry < 1 && competency.recentScore) {
-          // Retry after 1 second if we just completed an assessment
-          console.log('No data found, retrying...', retry + 1);
-          setTimeout(() => {
-            setRetryCount(retry + 1);
-            loadProgress(retry + 1);
-          }, 1000); // Reduced from 2000ms
-          return;
-        }
-
+        // No data found - show immediately, no retry
         setRecommendations({
           status: 'no-data',
           message: 'No assessment data available yet. Take an assessment to see your progress!',
@@ -76,13 +63,12 @@ const CompetencyScoreModal = ({ competency, isOpen, onClose }) => {
       }
     } catch (error) {
       console.error('Error loading progress:', error);
+      setLoading(false);
       setRecommendations({
         status: 'error',
         message: 'Failed to load progress data.',
         recommendations: []
       });
-    } finally {
-      setLoading(false);
     }
   };
 
