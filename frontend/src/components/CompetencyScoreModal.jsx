@@ -19,18 +19,29 @@ const CompetencyScoreModal = ({ competency, isOpen, onClose }) => {
   const loadProgress = async (retry = 0) => {
     setLoading(true);
     try {
+      console.log('🔍 Loading progress for competency:', {
+        competencyId: competency.id,
+        competencyLabel: competency.label,
+        competencyName: competency.name,
+        userId: currentUser.uid,
+        retry,
+        path: `users/${currentUser.uid}/competencyProgress/${competency.id}`
+      });
+
       // Add delay for first load to allow Firestore write to complete
       if (retry === 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
       const progressData = await getCompetencyProgress(currentUser.uid, competency.id);
 
-      console.log('Progress data loaded:', {
+      console.log('📊 Progress data loaded:', {
         competencyId: competency.id,
         hasData: !!progressData,
         score: progressData?.lastAssessmentScore,
-        retry
+        weakAreas: progressData?.weakAreas?.length,
+        retry,
+        fullData: progressData
       });
 
       setProgress(progressData);

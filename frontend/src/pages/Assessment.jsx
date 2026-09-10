@@ -239,7 +239,12 @@ const Assessment = () => {
           })
         }
 
-        console.log('Assessment score saved successfully')
+        console.log('Assessment score saved successfully', {
+          competencyId: selectedCompetency.id,
+          competencyName: selectedCompetency.name,
+          score: finalScore,
+          path: `users/${currentUser.uid}/competencyProgress/${selectedCompetency.id}`
+        })
       } catch (error) {
         console.error('Error saving assessment score:', error)
       }
@@ -534,9 +539,15 @@ const Assessment = () => {
             </button>
             <button
               onClick={() => {
-                // Pass score data via URL parameters for immediate display
-                const competencyId = selectedCompetency?.id || 'javascript'
-                const competencyName = encodeURIComponent(selectedCompetency?.name || 'JavaScript')
+                // Pass detailed competency info for debugging
+                const competencyId = selectedCompetency?.id
+                const competencyName = encodeURIComponent(selectedCompetency?.name || 'Unknown')
+                console.log('🚀 Navigating to knowledge graph with:', {
+                  competencyId,
+                  competencyName: selectedCompetency?.name,
+                  score,
+                  fullCompetency: selectedCompetency
+                })
                 window.location.href = `/knowledge-graph?openNode=${competencyId}&name=${competencyName}&score=${score}&fromAssessment=true`
               }}
               className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-colors"
