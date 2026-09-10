@@ -22,21 +22,73 @@ const KnowledgeGraph = ({
   const [selectedNode, setSelectedNode] = useState(null)
   const [nodePositions, setNodePositions] = useState({})
 
-  // Category colors - more distinct
+  // Category colors - Professional gradient-based palette
   const categoryColors = {
-    'frontend': '#3B82F6',
-    'backend': '#10B981',
-    'database': '#8B5CF6',
-    'devops': '#F59E0B',
-    'softskills': '#EC4899',
-    'design': '#14B8A6',
-    'general': '#64748B',
-    'career': '#EF4444',
-    'role': '#EF4444',
-    'software-dev': '#3B82F6',
-    'data-science': '#8B5CF6',
-    'business': '#EC4899',
-    'domain-skills': '#14B8A6'
+    'frontend': {
+      primary: '#3B82F6',
+      gradient: '#60A5FA',
+      shadow: 'rgba(59, 130, 246, 0.3)'
+    },
+    'backend': {
+      primary: '#10B981',
+      gradient: '#34D399',
+      shadow: 'rgba(16, 185, 129, 0.3)'
+    },
+    'database': {
+      primary: '#8B5CF6',
+      gradient: '#A78BFA',
+      shadow: 'rgba(139, 92, 246, 0.3)'
+    },
+    'devops': {
+      primary: '#F59E0B',
+      gradient: '#FBBF24',
+      shadow: 'rgba(245, 158, 11, 0.3)'
+    },
+    'softskills': {
+      primary: '#EC4899',
+      gradient: '#F472B6',
+      shadow: 'rgba(236, 72, 153, 0.3)'
+    },
+    'design': {
+      primary: '#14B8A6',
+      gradient: '#2DD4BF',
+      shadow: 'rgba(20, 184, 166, 0.3)'
+    },
+    'general': {
+      primary: '#64748B',
+      gradient: '#94A3B8',
+      shadow: 'rgba(100, 116, 139, 0.3)'
+    },
+    'career': {
+      primary: '#EF4444',
+      gradient: '#F87171',
+      shadow: 'rgba(239, 68, 68, 0.3)'
+    },
+    'role': {
+      primary: '#EF4444',
+      gradient: '#F87171',
+      shadow: 'rgba(239, 68, 68, 0.3)'
+    },
+    'software-dev': {
+      primary: '#3B82F6',
+      gradient: '#60A5FA',
+      shadow: 'rgba(59, 130, 246, 0.3)'
+    },
+    'data-science': {
+      primary: '#8B5CF6',
+      gradient: '#A78BFA',
+      shadow: 'rgba(139, 92, 246, 0.3)'
+    },
+    'business': {
+      primary: '#EC4899',
+      gradient: '#F472B6',
+      shadow: 'rgba(236, 72, 153, 0.3)'
+    },
+    'domain-skills': {
+      primary: '#14B8A6',
+      gradient: '#2DD4BF',
+      shadow: 'rgba(20, 184, 166, 0.3)'
+    }
   }
 
   // Calculate hierarchical layout based on prerequisites
@@ -92,9 +144,9 @@ const KnowledgeGraph = ({
       nodesByLevel[level].push(node)
     })
 
-    // Position nodes
-    const levelWidth = 250
-    const nodeHeight = 120
+    // Position nodes with better spacing
+    const levelWidth = 300
+    const nodeHeight = 140
     const maxLevel = Math.max(...Object.keys(nodesByLevel).map(Number))
 
     Object.keys(nodesByLevel).forEach(level => {
@@ -110,8 +162,8 @@ const KnowledgeGraph = ({
 
       levelNodes.forEach((node, index) => {
         positions[node.id] = {
-          x: levelNum * levelWidth + 150,
-          y: (index + 1) * nodeHeight + 50,
+          x: levelNum * levelWidth + 200,
+          y: (index + 1) * nodeHeight + 80,
           vx: 0,
           vy: 0
         }
@@ -175,24 +227,28 @@ const KnowledgeGraph = ({
           path => path.source === edge.source && path.target === edge.target
         )
 
-        // Draw edge line
+        // Draw edge line with gradient
+        const gradient = ctx.createLinearGradient(sourcePos.x, sourcePos.y, targetPos.x, targetPos.y)
+        gradient.addColorStop(0, isHighlighted ? '#F59E0B' : 'rgba(148, 163, 184, 0.4)')
+        gradient.addColorStop(1, isHighlighted ? '#FBBF24' : 'rgba(148, 163, 184, 0.2)')
+
         ctx.beginPath()
         ctx.moveTo(sourcePos.x, sourcePos.y)
         ctx.lineTo(targetPos.x, targetPos.y)
-        ctx.strokeStyle = isHighlighted ? '#F59E0B' : '#4B5563'
-        ctx.lineWidth = isHighlighted ? 3 : 2
+        ctx.strokeStyle = gradient
+        ctx.lineWidth = isHighlighted ? 3 : 1.5
         ctx.stroke()
 
-        // Draw arrow
+        // Draw arrow with better styling
         const angle = Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x)
-        const arrowSize = isHighlighted ? 14 : 10
-        const nodeRadius = 30
+        const arrowSize = isHighlighted ? 12 : 8
+        const nodeRadius = 32
         const distance = Math.sqrt(
           Math.pow(targetPos.x - sourcePos.x, 2) +
           Math.pow(targetPos.y - sourcePos.y, 2)
         )
-        const arrowX = sourcePos.x + (distance - nodeRadius - 5) * Math.cos(angle)
-        const arrowY = sourcePos.y + (distance - nodeRadius - 5) * Math.sin(angle)
+        const arrowX = sourcePos.x + (distance - nodeRadius - 8) * Math.cos(angle)
+        const arrowY = sourcePos.y + (distance - nodeRadius - 8) * Math.sin(angle)
 
         ctx.beginPath()
         ctx.moveTo(arrowX, arrowY)
@@ -205,12 +261,12 @@ const KnowledgeGraph = ({
           arrowY - arrowSize * Math.sin(angle + Math.PI / 6)
         )
         ctx.closePath()
-        ctx.fillStyle = isHighlighted ? '#F59E0B' : '#6B7280'
+        ctx.fillStyle = isHighlighted ? '#F59E0B' : 'rgba(148, 163, 184, 0.5)'
         ctx.fill()
       })
     }
 
-    // Draw nodes
+    // Draw nodes with modern styling
     if (graphData.nodes) {
       graphData.nodes.forEach(node => {
         const pos = nodePositions[node.id]
@@ -220,60 +276,99 @@ const KnowledgeGraph = ({
         const isSelected = selectedNode === node.id
         const isHovered = hoveredNode === node.id
 
-        const nodeRadius = node.type === 'role' ? 35 : 28
+        const nodeRadius = node.type === 'role' ? 38 : 32
 
-        // Draw shadow for hover/select
-        if (isHovered || isSelected) {
+        const category = node.category || 'general'
+        const colors = categoryColors[category] || categoryColors.general
+
+        // Draw outer glow for hover/select
+        if (isHovered || isSelected || isHighlighted) {
           ctx.beginPath()
-          ctx.arc(pos.x, pos.y, nodeRadius + 5, 0, 2 * Math.PI)
-          ctx.fillStyle = 'rgba(59, 130, 246, 0.3)'
+          ctx.arc(pos.x, pos.y, nodeRadius + 8, 0, 2 * Math.PI)
+          const glowGradient = ctx.createRadialGradient(pos.x, pos.y, nodeRadius, pos.x, pos.y, nodeRadius + 8)
+          glowGradient.addColorStop(0, colors.shadow)
+          glowGradient.addColorStop(1, 'transparent')
+          ctx.fillStyle = glowGradient
           ctx.fill()
         }
 
-        // Draw node circle
+        // Draw shadow
+        ctx.shadowColor = colors.shadow
+        ctx.shadowBlur = isSelected ? 20 : (isHovered ? 15 : 10)
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = 4
+
+        // Draw node circle with gradient
         ctx.beginPath()
         ctx.arc(pos.x, pos.y, nodeRadius, 0, 2 * Math.PI)
 
-        const category = node.category || 'general'
-        const color = categoryColors[category] || categoryColors.general
+        const nodeGradient = ctx.createRadialGradient(
+          pos.x - nodeRadius * 0.3,
+          pos.y - nodeRadius * 0.3,
+          0,
+          pos.x,
+          pos.y,
+          nodeRadius
+        )
 
         if (isHighlighted) {
-          ctx.fillStyle = '#FCD34D'
-          ctx.strokeStyle = '#F59E0B'
-          ctx.lineWidth = 4
-        } else if (isSelected) {
-          ctx.fillStyle = color
-          ctx.strokeStyle = '#3B82F6'
-          ctx.lineWidth = 4
+          nodeGradient.addColorStop(0, '#FCD34D')
+          nodeGradient.addColorStop(1, '#F59E0B')
         } else {
-          ctx.fillStyle = color
-          ctx.strokeStyle = '#1F2937'
-          ctx.lineWidth = 2
+          nodeGradient.addColorStop(0, colors.gradient)
+          nodeGradient.addColorStop(1, colors.primary)
         }
 
+        ctx.fillStyle = nodeGradient
         ctx.fill()
+
+        // Draw border
+        ctx.strokeStyle = isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.3)'
+        ctx.lineWidth = isSelected ? 3 : 2
         ctx.stroke()
 
-        // Draw role icon
+        // Reset shadow
+        ctx.shadowColor = 'transparent'
+        ctx.shadowBlur = 0
+
+        // Draw role icon with better styling
         if (node.type === 'role') {
           ctx.fillStyle = '#FFFFFF'
-          ctx.font = 'bold 24px sans-serif'
+          ctx.font = 'bold 20px sans-serif'
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
           ctx.fillText('🎯', pos.x, pos.y)
         }
 
-        // Draw label
+        // Draw completion checkmark
+        if (node.completed) {
+          ctx.beginPath()
+          ctx.arc(pos.x + nodeRadius - 8, pos.y - nodeRadius + 8, 10, 0, 2 * Math.PI)
+          ctx.fillStyle = '#10B981'
+          ctx.fill()
+          ctx.strokeStyle = '#FFFFFF'
+          ctx.lineWidth = 2
+          ctx.stroke()
+
+          ctx.fillStyle = '#FFFFFF'
+          ctx.font = 'bold 12px sans-serif'
+          ctx.fillText('✓', pos.x + nodeRadius - 8, pos.y - nodeRadius + 8)
+        }
+
+        // Draw label with better typography
         ctx.fillStyle = '#F9FAFB'
-        ctx.font = `${isSelected ? 'bold' : 'normal'} 13px sans-serif`
+        ctx.font = `${isSelected ? 'bold' : '600'} 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
+        ctx.shadowBlur = 4
+        ctx.shadowOffsetY = 1
 
         const label = node.label || node.id
-        const maxWidth = 120
+        const maxWidth = 140
         const words = label.split(' ')
         let line = ''
-        let y = pos.y + nodeRadius + 8
+        let y = pos.y + nodeRadius + 12
 
         words.forEach((word, i) => {
           const testLine = line + (line ? ' ' : '') + word
@@ -281,12 +376,14 @@ const KnowledgeGraph = ({
           if (metrics.width > maxWidth && line) {
             ctx.fillText(line, pos.x, y)
             line = word
-            y += 16
+            y += 18
           } else {
             line = testLine
           }
         })
         ctx.fillText(line, pos.x, y)
+
+        ctx.shadowColor = 'transparent'
       })
     }
 
@@ -377,7 +474,7 @@ const KnowledgeGraph = ({
   }
 
   return (
-    <div ref={containerRef} className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden">
+    <div ref={containerRef} className="relative w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl overflow-hidden border border-slate-700/50 shadow-2xl">
       <canvas
         ref={canvasRef}
         className="cursor-grab active:cursor-grabbing"
@@ -388,76 +485,96 @@ const KnowledgeGraph = ({
         onWheel={handleWheel}
       />
 
-      {/* Controls */}
+      {/* Controls with modern styling */}
       <div className="absolute top-4 right-4 flex flex-col gap-2">
         <button
           onClick={handleZoomIn}
-          className="p-2 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition border border-gray-700"
+          className="p-3 bg-slate-800/90 backdrop-blur-md rounded-lg shadow-lg hover:bg-slate-700 transition-all border border-slate-600/50 hover:scale-105"
           title="Zoom In"
         >
-          <ZoomIn className="w-5 h-5 text-gray-200" />
+          <ZoomIn className="w-5 h-5 text-slate-200" />
         </button>
         <button
           onClick={handleZoomOut}
-          className="p-2 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition border border-gray-700"
+          className="p-3 bg-slate-800/90 backdrop-blur-md rounded-lg shadow-lg hover:bg-slate-700 transition-all border border-slate-600/50 hover:scale-105"
           title="Zoom Out"
         >
-          <ZoomOut className="w-5 h-5 text-gray-200" />
+          <ZoomOut className="w-5 h-5 text-slate-200" />
         </button>
         <button
           onClick={handleResetView}
-          className="p-2 bg-gray-800 rounded-lg shadow-md hover:bg-gray-700 transition border border-gray-700"
+          className="p-3 bg-slate-800/90 backdrop-blur-md rounded-lg shadow-lg hover:bg-slate-700 transition-all border border-slate-600/50 hover:scale-105"
           title="Reset View"
         >
-          <Maximize2 className="w-5 h-5 text-gray-200" />
+          <Maximize2 className="w-5 h-5 text-slate-200" />
         </button>
       </div>
 
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-gray-800 rounded-lg shadow-md p-4 max-w-xs border border-gray-700">
-        <h3 className="font-semibold text-sm mb-2 text-white">Legend</h3>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+      {/* Legend with modern styling */}
+      <div className="absolute bottom-4 left-4 bg-slate-800/90 backdrop-blur-md rounded-xl shadow-2xl p-5 max-w-xs border border-slate-600/50">
+        <h3 className="font-bold text-base mb-4 text-slate-100">Legend</h3>
+        <div className="grid grid-cols-2 gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: categoryColors.frontend }}></div>
-            <span className="text-gray-300">Frontend</span>
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-lg"></div>
+            <span className="text-slate-200 font-medium">Frontend</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: categoryColors.backend }}></div>
-            <span className="text-gray-300">Backend</span>
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-lg"></div>
+            <span className="text-slate-200 font-medium">Backend</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: categoryColors.database }}></div>
-            <span className="text-gray-300">Database</span>
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg"></div>
+            <span className="text-slate-200 font-medium">Database</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: categoryColors.devops }}></div>
-            <span className="text-gray-300">DevOps</span>
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg"></div>
+            <span className="text-slate-200 font-medium">DevOps</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: categoryColors.career }}></div>
-            <span className="text-gray-300">🎯 Role</span>
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-red-400 to-red-600 shadow-lg"></div>
+            <span className="text-slate-200 font-medium">🎯 Role</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-0.5 bg-gray-400"></div>
-            <span className="text-gray-300 text-[10px]">→ Prerequisite</span>
+            <div className="w-5 h-1 bg-gradient-to-r from-slate-500 to-slate-400 rounded"></div>
+            <span className="text-slate-300 text-[10px]">→ Prerequisite</span>
           </div>
         </div>
       </div>
 
-      {/* Hovered Node Info */}
+      {/* Hovered Node Info with modern styling */}
       {hoveredNode && graphData && (
-        <div className="absolute top-4 left-4 bg-gray-800 rounded-lg shadow-lg p-4 max-w-md border border-gray-700">
+        <div className="absolute top-4 left-4 bg-slate-800/95 backdrop-blur-md rounded-xl shadow-2xl p-5 max-w-md border border-slate-600/50 animate-in fade-in slide-in-from-top-2 duration-200">
           {(() => {
             const node = graphData.nodes.find(n => n.id === hoveredNode)
             if (!node) return null
+            const category = node.category || 'general'
+            const colors = categoryColors[category] || categoryColors.general
             return (
               <>
-                <h3 className="font-bold text-lg mb-1 text-white">{node.label}</h3>
-                <p className="text-sm text-gray-300 mb-2">{node.description}</p>
-                <div className="flex gap-2 text-xs">
-                  <span className="px-2 py-1 bg-gray-700 text-gray-200 rounded">{node.category}</span>
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-3 h-3 rounded-full shadow-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${colors.gradient}, ${colors.primary})`,
+                      boxShadow: `0 0 20px ${colors.shadow}`
+                    }}
+                  ></div>
+                  <h3 className="font-bold text-lg text-slate-100">{node.label}</h3>
+                </div>
+                <p className="text-sm text-slate-300 mb-3 leading-relaxed">{node.description}</p>
+                <div className="flex gap-2 text-xs flex-wrap">
+                  <span className="px-3 py-1.5 bg-slate-700/70 text-slate-200 rounded-full font-medium border border-slate-600/30">
+                    {node.category}
+                  </span>
                   {node.type === 'role' && (
-                    <span className="px-2 py-1 bg-blue-900 text-blue-200 rounded">Career Role</span>
+                    <span className="px-3 py-1.5 bg-red-500/20 text-red-200 rounded-full font-medium border border-red-500/30">
+                      Career Role
+                    </span>
+                  )}
+                  {node.completed && (
+                    <span className="px-3 py-1.5 bg-green-500/20 text-green-200 rounded-full font-medium border border-green-500/30">
+                      ✓ Completed
+                    </span>
                   )}
                 </div>
               </>
