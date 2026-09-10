@@ -1,219 +1,298 @@
 /**
- * AI Learning Backend Service
- * Connects to Flask AI backend for personalized learning features
+ * AI Learning Service - Client-side implementation using Google Gemini API
+ * Works on all devices without backend
  */
 
-const API_BASE_URL = import.meta.env.VITE_AI_BACKEND_URL || 'http://localhost:5000';
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyBOti4mM-6x9WqMeM97kJWCk-JuLNsCDD0';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
 class AIService {
   /**
+   * Call Gemini API directly
+   */
+  async callGemini(prompt, retries = 2) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: prompt
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.7,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 2048,
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          if (response.status === 429 && attempt < retries) {
+            // Rate limit - wait and retry
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            continue;
+          }
+          throw new Error(error.error?.message || `API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!text) {
+          throw new Error('No response generated');
+        }
+
+        return text;
+      } catch (error) {
+        if (attempt === retries) {
+          throw error;
+        }
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+      }
+    }
+  }
+
+  /**
    * Explain a concept based on user level
-   * @param {string} concept - The concept/competency name to explain
-   * @param {string} userLevel - User's knowledge level: 'beginner', 'intermediate', 'advanced'
-   * @param {string} context - Additional context (optional)
-   * @returns {Promise<Object>} AI-generated explanation
    */
   async explainConcept(concept, userLevel = 'beginner', context = '') {
     try {
-      console.log('AI Service - Explaining concept with params:', {
-        competency_name: concept,
-        user_level: userLevel,
-        user_background: context
-      });
+      console.log('AI Service - Explaining concept:', concept, userLevel);
 
-      const response = await fetch(`${API_BASE_URL}/api/ai/explain`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          competency_name: concept,  // Backend expects 'competency_name'
-          user_level: userLevel,
-          user_background: context    // Backend expects 'user_background'
-        })
-      });
+      const prompt = `You are an expert technical educator. Explain the following concept for a ${userLevel} level learner.
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (response.status === 429) {
-          throw new Error(`Rate limit exceeded. Please wait ${errorData.retry_after || 60} seconds.`);
-        }
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
+Concept: ${concept}
+${context ? `Additional Context: ${context}` : ''}
 
-      const data = await response.json();
-      console.log('AI Service - Explanation generated successfully');
+Provide a clear, concise explanation that:
+1. Defines the concept in simple terms
+2. Explains why it's important
+3. Gives 1-2 practical examples
+4. Suggests what to learn next
+
+Keep the explanation under 300 words and appropriate for the ${userLevel} level.`;
+
+      const explanation = await this.callGemini(prompt);
 
       return {
-        explanation: data.explanation,
-        cached: data.cached || false
+        explanation,
+        cached: false
       };
     } catch (error) {
       console.error('Error explaining concept:', error);
-      throw new Error(error.message || 'Failed to explain concept. Please ensure the backend server is running.');
+      throw new Error(error.message || 'Failed to explain concept');
     }
   }
 
   /**
    * Summarize educational resource
-   * @param {string} content - The content to summarize
-   * @param {string} resourceType - Type: 'article', 'video', 'tutorial', 'book'
-   * @param {string} title - Resource title (optional)
-   * @returns {Promise<Object>} AI-generated summary
    */
   async summarizeResource(content, resourceType = 'article', title = 'Resource') {
     try {
-      console.log('AI Service - Summarizing resource with params:', {
-        content: content.substring(0, 100) + '...',
-        title
-      });
+      console.log('AI Service - Summarizing resource:', title);
 
-      const response = await fetch(`${API_BASE_URL}/api/ai/summarize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content,
-          title   // Backend expects 'title', not 'resource_type'
-        })
-      });
+      const prompt = `Summarize the following ${resourceType} titled "${title}":
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
+${content.substring(0, 3000)}
 
-      const data = await response.json();
-      console.log('AI Service - Summary generated successfully');
+Provide:
+1. A brief overview (2-3 sentences)
+2. Key points (3-5 bullet points)
+3. Main takeaways
+4. Who should read/watch this
+
+Keep the summary under 200 words.`;
+
+      const summary = await this.callGemini(prompt);
 
       return {
-        summary: data.summary,
-        cached: data.cached || false
+        summary,
+        cached: false
       };
     } catch (error) {
       console.error('Error summarizing resource:', error);
-      throw new Error(error.message || 'Failed to summarize resource. Please ensure the backend server is running.');
+      throw new Error(error.message || 'Failed to summarize resource');
     }
   }
 
   /**
    * Generate practice quiz questions
-   * @param {string} topic - The topic/competency name for quiz questions
-   * @param {number} numQuestions - Number of questions (1-10)
-   * @param {string} difficulty - Difficulty level: 'beginner', 'intermediate', 'advanced'
-   * @param {string} context - Additional context (optional)
-   * @returns {Promise<Object>} Array of quiz questions
    */
   async generateQuiz(topic, numQuestions = 5, difficulty = 'intermediate', context = '') {
     try {
-      console.log('AI Service - Generating quiz with params:', {
-        competency_name: topic,
-        num_questions: numQuestions,
-        difficulty,
-        context
-      });
+      console.log('AI Service - Generating quiz:', topic, numQuestions, difficulty);
 
-      const response = await fetch(`${API_BASE_URL}/api/ai/quiz`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          competency_name: topic,  // Backend expects 'competency_name', not 'topic'
-          num_questions: Math.min(Math.max(1, numQuestions), 10),
-          difficulty: difficulty,   // Backend expects 'difficulty', not 'user_level'
-          context
-        })
-      });
+      const prompt = `Generate ${numQuestions} multiple-choice quiz questions about "${topic}" at ${difficulty} level.
+${context ? `Context: ${context}` : ''}
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+Return ONLY a valid JSON array with this exact format:
+[
+  {
+    "question": "Question text here?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correct_answer": 0,
+    "explanation": "Why this answer is correct",
+    "topic": "${topic}"
+  }
+]
+
+Rules:
+- Each question must have exactly 4 options
+- correct_answer is the index (0-3) of the correct option
+- Questions should test understanding, not just memorization
+- Include practical scenarios when possible
+- Return ONLY the JSON array, no other text`;
+
+      const response = await this.callGemini(prompt);
+
+      // Extract JSON from response
+      let jsonText = response.trim();
+
+      // Remove markdown code blocks if present
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/```\n?/g, '');
       }
 
-      const data = await response.json();
-      console.log('AI Service - Quiz generated successfully:', data);
+      const questions = JSON.parse(jsonText);
+
+      // Validate questions
+      if (!Array.isArray(questions) || questions.length === 0) {
+        throw new Error('Invalid quiz format');
+      }
 
       return {
-        questions: data.questions,
-        cached: data.cached || false
+        questions,
+        cached: false
       };
     } catch (error) {
       console.error('Error generating quiz:', error);
-      throw new Error(error.message || 'Failed to generate quiz. Please ensure the backend server is running.');
+      throw new Error(error.message || 'Failed to generate quiz');
     }
   }
 
   /**
    * Get personalized learning recommendations
-   * @param {Object} userProfile - User's learning profile
-   * @returns {Promise<Object>} Array of personalized recommendations
    */
-  async getRecommendations(userProfile) {
+  async getRecommendations(userProfile, goalCompetency, completedCompetencies = []) {
     try {
-      console.log('AI Service - Getting recommendations with params:', {
-        user_competencies: userProfile.completedTopics || [],
-        target_competencies: userProfile.goals || []
-      });
+      console.log('AI Service - Getting recommendations');
 
-      const response = await fetch(`${API_BASE_URL}/api/ai/recommendations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_competencies: userProfile.completedTopics || [],
-          target_competencies: Array.isArray(userProfile.goals) ? userProfile.goals : []
-        })
-      });
+      const prompt = `You are a personalized learning advisor. Based on the following information, provide learning recommendations:
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
+Goal: Master ${goalCompetency}
+User Level: ${userProfile.level || 'intermediate'}
+Completed: ${completedCompetencies.join(', ') || 'None'}
+Learning Style: ${userProfile.learningStyle || 'mixed'}
 
-      const data = await response.json();
-      console.log('AI Service - Recommendations generated successfully');
+Provide:
+1. Next 3 skills to learn (in order)
+2. Why each skill is recommended
+3. Estimated time for each
+4. Best resources type for each
+
+Keep recommendations practical and achievable.`;
+
+      const recommendations = await this.callGemini(prompt);
 
       return {
-        recommendations: data.recommendations,
-        cached: data.cached || false
+        recommendations,
+        cached: false
       };
     } catch (error) {
       console.error('Error getting recommendations:', error);
-      throw new Error(error.message || 'Failed to get recommendations. Please ensure the backend server is running.');
+      throw new Error(error.message || 'Failed to get recommendations');
     }
   }
 
   /**
-   * Check backend health status
-   * @returns {Promise<Object>} Backend health information
+   * Generate learning path
+   */
+  async generateLearningPath(goalRole, currentSkills = [], timeframe = '6 months') {
+    try {
+      console.log('AI Service - Generating learning path');
+
+      const prompt = `Create a structured learning path for someone who wants to become a ${goalRole}.
+
+Current Skills: ${currentSkills.join(', ') || 'Beginner'}
+Timeframe: ${timeframe}
+
+Provide a week-by-week plan with:
+1. Skills to learn each month
+2. Project ideas to practice
+3. Milestones to track progress
+4. Resources needed
+
+Format as a clear, actionable roadmap.`;
+
+      const path = await this.callGemini(prompt);
+
+      return {
+        path,
+        cached: false
+      };
+    } catch (error) {
+      console.error('Error generating learning path:', error);
+      throw new Error(error.message || 'Failed to generate learning path');
+    }
+  }
+
+  /**
+   * Analyze skill gaps
+   */
+  async analyzeSkillGaps(targetRole, currentSkills = []) {
+    try {
+      console.log('AI Service - Analyzing skill gaps');
+
+      const prompt = `Analyze the skill gap for becoming a ${targetRole}.
+
+Current Skills: ${currentSkills.join(', ') || 'None listed'}
+
+Provide:
+1. Critical missing skills (top 5)
+2. Nice-to-have skills
+3. Priority order for learning
+4. Estimated time to bridge each gap
+
+Be specific and practical.`;
+
+      const analysis = await this.callGemini(prompt);
+
+      return {
+        analysis,
+        cached: false
+      };
+    } catch (error) {
+      console.error('Error analyzing skill gaps:', error);
+      throw new Error(error.message || 'Failed to analyze skill gaps');
+    }
+  }
+
+  /**
+   * Check if AI service is available
    */
   async checkHealth() {
     try {
-      console.log('AI Service - Checking backend health at:', `${API_BASE_URL}/health`);
-
-      const response = await fetch(`${API_BASE_URL}/health`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('AI Service - Backend health:', data);
-
-      return data;
+      const testPrompt = 'Say "OK" if you receive this message.';
+      await this.callGemini(testPrompt);
+      return { status: 'ok', message: 'AI service is operational' };
     } catch (error) {
-      console.error('Error checking backend health:', error);
-      throw new Error(error.message || 'Failed to connect to backend server. Please ensure it is running.');
+      return {
+        status: 'error',
+        message: error.message || 'AI service is unavailable'
+      };
     }
   }
 }
 
-// Export singleton instance
-const aiService = new AIService();
-export default aiService;
-
-// Also export the class for custom instances
-export { AIService };
+export default new AIService();
