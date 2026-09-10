@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { db, auth } from '../firebase'
+import { collection, getDocs } from 'firebase/firestore'
 import {
   Trophy,
   TrendingUp,
@@ -29,6 +32,7 @@ import {
 
 const EnhancedDashboard = () => {
   const navigate = useNavigate()
+  const { currentUser } = useAuth()
   const [stats, setStats] = useState({
     totalResources: 0,
     completedResources: 0,
@@ -37,26 +41,57 @@ const EnhancedDashboard = () => {
     totalHours: 0,
     streakDays: 0
   })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadDashboardData()
-  }, [])
+    if (currentUser) {
+      loadDashboardData()
+    }
+  }, [currentUser])
 
-  const loadDashboardData = () => {
-    // Load data from localStorage
-    const library = JSON.parse(localStorage.getItem('myLibrary') || '[]')
-    const completed = JSON.parse(localStorage.getItem('completedResources') || '[]')
-    const learning = JSON.parse(localStorage.getItem('learningResources') || '[]')
-    const paths = JSON.parse(localStorage.getItem('learningPaths') || '[]')
+  const loadDashboardData = async () => {
+    if (!auth.currentUser) {
+      setLoading(false)
+      return
+    }
 
-    setStats({
-      totalResources: library.length,
-      completedResources: completed.length,
-      learningResources: learning.length,
-      totalPaths: paths.length,
-      totalHours: completed.length * 25, // Estimated hours
-      streakDays: Math.min(library.length, 30) // Simple streak calculation
-    })
+    try {
+      setLoading(true)
+
+      // Load user's learning paths from Firestore
+      const pathsRef = collection(db, 'users', auth.currentUser.uid, 'learningPaths')
+      const pathsSnapshot = await getDocs(pathsRef)
+      const paths = pathsSnapshot.docs.map(doc => doc.data())
+
+      // Calculate stats from Firestore data
+      const activePaths = paths.filter(p => p.status === 'active').length
+      const completedPaths = paths.filter(p => p.status === 'completed').length
+
+      // Calculate total hours from paths
+      const totalHours = paths.reduce((sum, path) => {
+        return sum + (path.totalHours || 0)
+      }, 0)
+
+      // Calculate completed hours based on progress
+      const completedHours = paths.reduce((sum, path) => {
+        const pathHours = path.totalHours || 0
+        const progress = path.progress || 0
+        return sum + (pathHours * (progress / 100))
+      }, 0)
+
+      setStats({
+        totalResources: paths.length,
+        completedResources: completedPaths,
+        learningResources: activePaths,
+        totalPaths: paths.length,
+        totalHours: Math.round(completedHours),
+        streakDays: 0 // TODO: Implement streak calculation
+      })
+    } catch (error) {
+      console.error('Error loading dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
