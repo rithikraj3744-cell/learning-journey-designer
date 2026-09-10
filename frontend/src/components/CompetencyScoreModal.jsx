@@ -8,6 +8,7 @@ const CompetencyScoreModal = ({ competency, isOpen, onClose }) => {
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [recommendations, setRecommendations] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (isOpen && competency && currentUser) {
@@ -15,16 +16,47 @@ const CompetencyScoreModal = ({ competency, isOpen, onClose }) => {
     }
   }, [isOpen, competency, currentUser]);
 
-  const loadProgress = async () => {
+  const loadProgress = async (retry = 0) => {
     setLoading(true);
     try {
+      // Add delay for first load to allow Firestore write to complete
+      if (retry === 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
       const progressData = await getCompetencyProgress(currentUser.uid, competency.id);
+
+      console.log('Progress data loaded:', {
+        competencyId: competency.id,
+        hasData: !!progressData,
+        score: progressData?.lastAssessmentScore,
+        retry
+      });
+
       setProgress(progressData);
 
       if (progressData && progressData.weakAreas) {
         const recs = getTopicRecommendations(progressData.weakAreas, competency.label || competency.name);
         setRecommendations(recs);
+      } else if (progressData && progressData.lastAssessmentScore !== undefined) {
+        // Has score but no weak areas (perfect score)
+        setRecommendations({
+          status: 'strong',
+          message: `Great job! You scored ${progressData.lastAssessmentScore}% on ${competency.label || competency.name}.`,
+          recommendations: []
+        });
       } else {
+        // No data found, might need retry
+        if (retry < 2 && competency.recentScore) {
+          // Retry after 2 seconds if we just completed an assessment
+          console.log('No data found, retrying...', retry + 1);
+          setTimeout(() => {
+            setRetryCount(retry + 1);
+            loadProgress(retry + 1);
+          }, 2000);
+          return;
+        }
+
         setRecommendations({
           status: 'no-data',
           message: 'No assessment data available yet. Take an assessment to see your progress!',

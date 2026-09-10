@@ -534,9 +534,10 @@ const Assessment = () => {
             </button>
             <button
               onClick={() => {
-                // Navigate back to knowledge graph and trigger modal for this competency
+                // Pass score data via URL parameters for immediate display
                 const competencyId = selectedCompetency?.id || 'javascript'
-                window.location.href = `/knowledge-graph?openNode=${competencyId}`
+                const competencyName = encodeURIComponent(selectedCompetency?.name || 'JavaScript')
+                window.location.href = `/knowledge-graph?openNode=${competencyId}&name=${competencyName}&score=${score}&fromAssessment=true`
               }}
               className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-colors"
             >

@@ -48,10 +48,26 @@ const KnowledgeGraphPage = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const openNodeId = params.get('openNode')
+    const fromAssessment = params.get('fromAssessment')
 
     if (openNodeId && graphData && !showScoreModal) {
       // Find the node in graphData
-      const node = graphData.nodes?.find(n => n.id === openNodeId)
+      let node = graphData.nodes?.find(n => n.id === openNodeId)
+
+      // If not found and coming from assessment, create a temporary node object
+      if (!node && fromAssessment === 'true') {
+        const nodeName = params.get('name')
+        const nodeScore = params.get('score')
+        node = {
+          id: openNodeId,
+          label: decodeURIComponent(nodeName || openNodeId),
+          name: decodeURIComponent(nodeName || openNodeId),
+          category: 'competency',
+          recentScore: nodeScore
+        }
+        console.log('Created temporary node for assessment:', node)
+      }
+
       if (node) {
         console.log('Auto-opening modal for node:', openNodeId)
         setSelectedCompetency(node)
