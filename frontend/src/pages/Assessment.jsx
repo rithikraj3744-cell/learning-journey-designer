@@ -119,7 +119,7 @@ const Assessment = () => {
       console.log('Generating quiz for:', comp.name, 'Difficulty:', difficulty)
       const result = await aiService.generateQuiz(
         comp.name,
-        5,
+        10,
         difficulty,
         `Focus on ${comp.category} - ${comp.subcategory}`
       )

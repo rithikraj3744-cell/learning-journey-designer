@@ -14,6 +14,7 @@ import CompetencyExplorer from './pages/CompetencyExplorer'
 import CompetenciesWithTest from './pages/CompetenciesWithTest'
 import CompetencyDetail from './pages/CompetencyDetail'
 import CompetencyLearningPage from './pages/CompetencyLearningPage'
+import Assessment from './pages/Assessment'
 import AssessmentWelcome from './pages/AssessmentWelcome'
 import AssessmentTest from './pages/AssessmentTest'
 import AssessmentResults from './pages/AssessmentResults'
@@ -59,7 +60,8 @@ function App() {
         <Route path="/competencies" element={<DashboardLayout><CompetencyExplorer /></DashboardLayout>} />
         <Route path="/competencies/:competencyId" element={<DashboardLayout><CompetencyDetail /></DashboardLayout>} />
         <Route path="/competencies-test" element={<DashboardLayout><CompetenciesWithTest /></DashboardLayout>} />
-        <Route path="/assessment" element={<DashboardLayout><AssessmentWelcome /></DashboardLayout>} />
+        <Route path="/assessment-welcome" element={<DashboardLayout><AssessmentWelcome /></DashboardLayout>} />
+        <Route path="/assessment" element={<DashboardLayout><Assessment /></DashboardLayout>} />
         <Route path="/assessment/test" element={<DashboardLayout><AssessmentTest /></DashboardLayout>} />
         <Route path="/assessment/results" element={<DashboardLayout><AssessmentResults /></DashboardLayout>} />
 
