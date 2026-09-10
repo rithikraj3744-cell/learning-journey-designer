@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { db, auth } from '../firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import {
   ArrowLeft,
   Clock,
@@ -30,13 +32,31 @@ const LearningPathView = () => {
 
   const loadPath = async () => {
     try {
-      // Load path from localStorage
-      const storedPaths = JSON.parse(localStorage.getItem('learningPaths') || '[]');
-      const foundPath = storedPaths.find(p => p.id === pathId);
+      if (!auth.currentUser) {
+        console.log('No user logged in');
+        setLoading(false);
+        return;
+      }
 
-      if (foundPath) {
-        setPath(foundPath);
-        setCompletedCompetencies(foundPath.completedCompetencies || []);
+      console.log('Loading path from Firestore:', pathId);
+
+      // Load path from Firestore
+      const pathRef = doc(db, 'users', auth.currentUser.uid, 'learningPaths', pathId);
+      const pathDoc = await getDoc(pathRef);
+
+      if (pathDoc.exists()) {
+        const pathData = {
+          id: pathDoc.id,
+          ...pathDoc.data(),
+          createdAt: pathDoc.data().createdAt?.toDate(),
+          targetDate: pathDoc.data().targetDate?.toDate()
+        };
+
+        console.log('Path loaded:', pathData);
+        setPath(pathData);
+        setCompletedCompetencies(pathData.completedCompetencies || []);
+      } else {
+        console.log('Path not found in Firestore');
       }
     } catch (error) {
       console.error('Error loading path:', error);
@@ -47,6 +67,11 @@ const LearningPathView = () => {
 
   const markCompetencyComplete = async (competencyId) => {
     try {
+      if (!auth.currentUser) {
+        console.log('No user logged in');
+        return;
+      }
+
       const newCompleted = completedCompetencies.includes(competencyId)
         ? completedCompetencies.filter(id => id !== competencyId)
         : [...completedCompetencies, competencyId];
@@ -54,33 +79,30 @@ const LearningPathView = () => {
       setCompletedCompetencies(newCompleted);
 
       // Calculate new progress
-      const totalCompetencies = path.competencies.length;
-      const newProgress = (newCompleted.length / totalCompetencies) * 100;
+      const totalCompetencies = path.competencies?.length || 0;
+      const newProgress = totalCompetencies > 0 ? (newCompleted.length / totalCompetencies) * 100 : 0;
 
-      // Update in localStorage
-      const storedPaths = JSON.parse(localStorage.getItem('learningPaths') || '[]');
-      const updatedPaths = storedPaths.map(p => {
-        if (p.id === pathId) {
-          return {
-            ...p,
-            completedCompetencies: newCompleted,
-            progress: newProgress,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return p;
+      // Update in Firestore
+      const pathRef = doc(db, 'users', auth.currentUser.uid, 'learningPaths', pathId);
+      await updateDoc(pathRef, {
+        completedCompetencies: newCompleted,
+        progress: newProgress,
+        updatedAt: new Date(),
+        status: newProgress >= 100 ? 'completed' : 'active'
       });
-
-      localStorage.setItem('learningPaths', JSON.stringify(updatedPaths));
 
       // Update local state
       setPath(prev => ({
         ...prev,
         completedCompetencies: newCompleted,
-        progress: newProgress
+        progress: newProgress,
+        status: newProgress >= 100 ? 'completed' : 'active'
       }));
+
+      console.log('Progress updated:', { newProgress, completedCount: newCompleted.length });
     } catch (error) {
       console.error('Error updating progress:', error);
+      alert('Failed to update progress');
     }
   };
 

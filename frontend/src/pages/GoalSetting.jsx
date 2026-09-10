@@ -100,22 +100,50 @@ const GoalSetting = () => {
   }
 
   const handleGeneratePath = async (goal) => {
-    // Auto-generate learning path from goal
-    const pathData = {
-      title: `Path to ${goal.title}`,
-      description: goal.description,
-      competencies: goal.targetCompetencies,
-      targetDate: goal.targetDate,
-      goalId: goal.id,
-      createdAt: new Date(),
-      progress: 0
-    }
-
     try {
+      // Fetch full competency data for the goal's target competencies
+      const selectedCompetencyData = competencies.filter(c =>
+        goal.targetCompetencies.includes(c.id)
+      );
+
+      // Calculate total estimated time
+      const totalHours = selectedCompetencyData.reduce((sum, comp) =>
+        sum + (comp.estimatedHours || 10), 0
+      );
+
+      // Calculate estimated completion weeks (assuming 10 hours/week default)
+      const timeAvailable = 10; // Default hours per week
+      const estimatedWeeks = Math.ceil(totalHours / timeAvailable);
+
+      // Auto-generate learning path from goal
+      const pathData = {
+        userId: auth.currentUser.uid,
+        title: `Path to ${goal.title}`,
+        name: `Path to ${goal.title}`,
+        description: goal.description,
+        competencies: selectedCompetencyData, // Full competency objects
+        targetCompetencies: goal.targetCompetencies, // Keep the IDs too
+        targetDate: goal.targetDate,
+        goalId: goal.id,
+        totalHours,
+        estimatedWeeks,
+        timeAvailable,
+        preferences: {
+          learningStyle: 'visual',
+          preferredResourceTypes: ['video', 'course']
+        },
+        progress: 0,
+        completedCompetencies: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        status: 'active'
+      }
+
       await addDoc(collection(db, 'users', auth.currentUser.uid, 'learningPaths'), pathData)
       navigate('/my-paths')
     } catch (error) {
       console.error('Error generating path:', error)
+      alert('Failed to generate learning path. Please try again.')
     }
   }
 

@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useAuth } from '../contexts/AuthContext'
+import { getUserAssessments } from '../services/firestore'
 import KnowledgeGraph from '../components/KnowledgeGraph'
-import { Target, Filter, Search, TrendingUp, BookOpen, AlertCircle } from 'lucide-react'
+import { Target, Filter, Search, TrendingUp, BookOpen, AlertCircle, Award } from 'lucide-react'
+import knowledgeGraphService, { CareerRoles } from '../services/knowledgeGraphService'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+const USE_MOCK_DATA = true // Set to false when backend is available
 
 const KnowledgeGraphPage = () => {
   const navigate = useNavigate()
+  const { currentUser } = useAuth()
   const [graphData, setGraphData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -22,6 +27,8 @@ const KnowledgeGraphPage = () => {
   const [highlightedPath, setHighlightedPath] = useState([])
   const [userCompetencies, setUserCompetencies] = useState({})
   const [showPathToRole, setShowPathToRole] = useState(false)
+  const [userAssessments, setUserAssessments] = useState([])
+  const [completedCompetencies, setCompletedCompetencies] = useState([])
 
   // Load initial graph data
   useEffect(() => {
@@ -29,15 +36,97 @@ const KnowledgeGraphPage = () => {
     loadRoles()
   }, [])
 
-  // Load user competencies
+  // Load user competencies from assessments
   useEffect(() => {
-    loadUserCompetencies()
-  }, [])
+    loadUserAssessmentsData()
+  }, [currentUser])
+
+  const loadUserAssessmentsData = async () => {
+    if (!currentUser) {
+      console.log('No user logged in, skipping assessment data load')
+      return
+    }
+
+    try {
+      const assessments = await getUserAssessments(currentUser.uid)
+      setUserAssessments(assessments)
+
+      // Extract completed competencies (those with score >= 60%)
+      const completed = []
+      const competencyMap = {}
+
+      assessments.forEach(assessment => {
+        if (assessment.competencyScores) {
+          Object.entries(assessment.competencyScores).forEach(([compId, data]) => {
+            const percentage = Math.round((data.correct / data.total) * 100)
+
+            if (percentage >= 60) {
+              completed.push(compId)
+            }
+
+            competencyMap[compId] = {
+              score: percentage,
+              level: percentage >= 80 ? 'Advanced' : percentage >= 60 ? 'Intermediate' : 'Beginner',
+              lastAssessed: assessment.completedAt
+            }
+          })
+        }
+      })
+
+      setCompletedCompetencies([...new Set(completed)])
+      setUserCompetencies(competencyMap)
+
+      console.log('✓ Loaded user assessment data:', {
+        totalAssessments: assessments.length,
+        completedCompetencies: completed.length,
+        competencyMap
+      })
+    } catch (error) {
+      console.error('Error loading user assessments:', error)
+    }
+  }
 
   const loadFullGraph = async () => {
     try {
       setLoading(true)
       setError(null)
+
+      // Use mock data if backend is unavailable
+      if (USE_MOCK_DATA) {
+        const mockGraphData = knowledgeGraphService.buildGraphData()
+
+        // Transform data to match component expectations
+        const transformedData = {
+          nodes: mockGraphData.nodes.map(n => ({
+            id: n.id,
+            label: n.name,
+            type: n.category === 'role' ? 'role' : 'competency',
+            category: n.category,
+            description: `${n.name} - Level ${n.level}`,
+            level: n.level,
+            // Mark node as completed if user has passed assessment
+            completed: completedCompetencies.includes(n.id),
+            userScore: userCompetencies[n.id]?.score
+          })),
+          edges: mockGraphData.links.map(l => ({
+            source: l.source,
+            target: l.target,
+            type: l.type
+          }))
+        }
+
+        setGraphData(transformedData)
+        extractCategories(transformedData.nodes)
+
+        // Auto-highlight completed competencies
+        if (completedCompetencies.length > 0) {
+          setHighlightedNodes(completedCompetencies)
+        }
+
+        setLoading(false)
+        return
+      }
+
       const response = await axios.get(`${API_BASE_URL}/api/graph/full`)
       if (response.data.success) {
         setGraphData(response.data.graph)
@@ -47,7 +136,35 @@ const KnowledgeGraphPage = () => {
       }
     } catch (err) {
       console.error('Error loading graph:', err)
-      setError('Failed to connect to server')
+      // Fallback to mock data on error
+      console.log('Falling back to mock data...')
+      const mockGraphData = knowledgeGraphService.buildGraphData()
+
+      // Transform data to match component expectations
+      const transformedData = {
+        nodes: mockGraphData.nodes.map(n => ({
+          id: n.id,
+          label: n.name,
+          type: n.category === 'role' ? 'role' : 'competency',
+          category: n.category,
+          description: `${n.name} - Level ${n.level}`,
+          level: n.level,
+          completed: completedCompetencies.includes(n.id),
+          userScore: userCompetencies[n.id]?.score
+        })),
+        edges: mockGraphData.links.map(l => ({
+          source: l.source,
+          target: l.target,
+          type: l.type
+        }))
+      }
+
+      setGraphData(transformedData)
+      extractCategories(transformedData.nodes)
+
+      if (completedCompetencies.length > 0) {
+        setHighlightedNodes(completedCompetencies)
+      }
     } finally {
       setLoading(false)
     }
@@ -55,12 +172,22 @@ const KnowledgeGraphPage = () => {
 
   const loadRoles = async () => {
     try {
+      // Use mock data if backend is unavailable
+      if (USE_MOCK_DATA) {
+        const mockRoles = Object.values(CareerRoles)
+        setRoles(mockRoles)
+        return
+      }
+
       const response = await axios.get(`${API_BASE_URL}/api/graph/roles`)
       if (response.data.success) {
         setRoles(response.data.roles)
       }
     } catch (err) {
       console.error('Error loading roles:', err)
+      // Fallback to mock data
+      const mockRoles = Object.values(CareerRoles)
+      setRoles(mockRoles)
     }
   }
 
@@ -110,6 +237,43 @@ const KnowledgeGraphPage = () => {
     setError(null)
 
     try {
+      // Use mock data if backend is unavailable
+      if (USE_MOCK_DATA) {
+        const mockGraphData = knowledgeGraphService.buildGraphData()
+
+        // Filter nodes by category
+        const filteredNodes = mockGraphData.nodes.filter(n => n.category === category)
+        const nodeIds = new Set(filteredNodes.map(n => n.id))
+
+        // Filter edges to only include those between filtered nodes
+        const filteredLinks = mockGraphData.links.filter(l => 
+          nodeIds.has(l.source) && nodeIds.has(l.target)
+        )
+
+        // Transform data
+        const transformedData = {
+          nodes: filteredNodes.map(n => ({
+            id: n.id,
+            label: n.name,
+            type: n.category === 'role' ? 'role' : 'competency',
+            category: n.category,
+            description: `${n.name} - Level ${n.level}`,
+            level: n.level,
+            completed: completedCompetencies.includes(n.id),
+            userScore: userCompetencies[n.id]?.score
+          })),
+          edges: filteredLinks.map(l => ({
+            source: l.source,
+            target: l.target,
+            type: l.type
+          }))
+        }
+
+        setGraphData(transformedData)
+        setLoading(false)
+        return
+      }
+
       const response = await axios.get(`${API_BASE_URL}/api/graph/category/${category}`)
       if (response.data.success) {
         setGraphData(response.data.graph)
@@ -118,7 +282,34 @@ const KnowledgeGraphPage = () => {
       }
     } catch (err) {
       console.error('Error loading category graph:', err)
-      setError('Failed to load category graph')
+      
+      // Fallback to mock data
+      const mockGraphData = knowledgeGraphService.buildGraphData()
+      const filteredNodes = mockGraphData.nodes.filter(n => n.category === category)
+      const nodeIds = new Set(filteredNodes.map(n => n.id))
+      const filteredLinks = mockGraphData.links.filter(l => 
+        nodeIds.has(l.source) && nodeIds.has(l.target)
+      )
+
+      const transformedData = {
+        nodes: filteredNodes.map(n => ({
+          id: n.id,
+          label: n.name,
+          type: n.category === 'role' ? 'role' : 'competency',
+          category: n.category,
+          description: `${n.name} - Level ${n.level}`,
+          level: n.level,
+          completed: completedCompetencies.includes(n.id),
+          userScore: userCompetencies[n.id]?.score
+        })),
+        edges: filteredLinks.map(l => ({
+          source: l.source,
+          target: l.target,
+          type: l.type
+        }))
+      }
+
+      setGraphData(transformedData)
     } finally {
       setLoading(false)
     }
@@ -131,6 +322,32 @@ const KnowledgeGraphPage = () => {
     setViewMode('role')
 
     try {
+      // Use mock data if backend is unavailable
+      if (USE_MOCK_DATA) {
+        const mockGraphData = knowledgeGraphService.buildGraphData(null, roleId)
+
+        // Transform data to match component expectations
+        const transformedData = {
+          nodes: mockGraphData.nodes.map(n => ({
+            id: n.id,
+            label: n.name,
+            type: n.category === 'role' ? 'role' : 'competency',
+            category: n.category,
+            description: `${n.name} - Level ${n.level}`,
+            level: n.level
+          })),
+          edges: mockGraphData.links.map(l => ({
+            source: l.source,
+            target: l.target,
+            type: l.type
+          }))
+        }
+
+        setGraphData(transformedData)
+        setLoading(false)
+        return
+      }
+
       const response = await axios.get(`${API_BASE_URL}/api/graph/roles/${roleId}/graph`)
       if (response.data.success) {
         setGraphData(response.data.graph)
@@ -139,7 +356,26 @@ const KnowledgeGraphPage = () => {
       }
     } catch (err) {
       console.error('Error loading role graph:', err)
-      setError('Failed to load role graph')
+      // Fallback to mock data
+      const mockGraphData = knowledgeGraphService.buildGraphData(null, roleId)
+
+      const transformedData = {
+        nodes: mockGraphData.nodes.map(n => ({
+          id: n.id,
+          label: n.name,
+          type: n.category === 'role' ? 'role' : 'competency',
+          category: n.category,
+          description: `${n.name} - Level ${n.level}`,
+          level: n.level
+        })),
+        edges: mockGraphData.links.map(l => ({
+          source: l.source,
+          target: l.target,
+          type: l.type
+        }))
+      }
+
+      setGraphData(transformedData)
     } finally {
       setLoading(false)
     }

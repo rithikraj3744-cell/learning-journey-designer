@@ -88,3 +88,5 @@ firebase-config.js
 # API Keys (keep .env.example only)
 *.key
 *.pem
+
+.vercel

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { generateLearningPath } from '../services/api';
+import { db, auth } from '../firebase';
+import { collection, addDoc } from 'firebase/firestore';
 import { competencyList } from '../data';
 import {
   Target,
@@ -73,17 +74,21 @@ const PathGenerator = () => {
       return;
     }
 
+    if (!auth.currentUser) {
+      alert('Please login to create a learning path');
+      navigate('/login');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Generate path locally instead of calling backend
-      const pathId = `path-${Date.now()}`;
       const selectedCompetencyData = competencies.filter(c =>
         selectedCompetencies.includes(c.id)
       );
 
       // Calculate total estimated time
       const totalHours = selectedCompetencyData.reduce((sum, comp) =>
-        sum + comp.estimatedHours, 0
+        sum + (comp.estimatedHours || 10), 0
       );
 
       // Calculate estimated completion weeks
@@ -91,8 +96,8 @@ const PathGenerator = () => {
 
       // Create learning path object
       const learningPath = {
-        id: pathId,
-        userId: currentUser?.uid || 'demo-user',
+        userId: auth.currentUser.uid,
+        title: `Learning Path - ${selectedCompetencyData.map(c => c.name).join(', ').substring(0, 50)}${selectedCompetencyData.length > 1 ? '...' : ''}`,
         name: `Learning Path - ${selectedCompetencyData.map(c => c.name).join(', ').substring(0, 50)}${selectedCompetencyData.length > 1 ? '...' : ''}`,
         targetCompetencies: selectedCompetencies,
         competencies: selectedCompetencyData,
@@ -101,18 +106,22 @@ const PathGenerator = () => {
         totalHours,
         estimatedWeeks,
         progress: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        completedCompetencies: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
         status: 'active'
       };
 
-      // Save to localStorage
-      const existingPaths = JSON.parse(localStorage.getItem('learningPaths') || '[]');
-      existingPaths.push(learningPath);
-      localStorage.setItem('learningPaths', JSON.stringify(existingPaths));
+      // Save to Firestore
+      const docRef = await addDoc(
+        collection(db, 'users', auth.currentUser.uid, 'learningPaths'),
+        learningPath
+      );
+
+      console.log('Learning path created:', docRef.id);
 
       // Navigate to the path view
-      navigate(`/my-paths/${pathId}`);
+      navigate(`/my-paths/${docRef.id}`);
     } catch (error) {
       console.error('Error generating path:', error);
       alert('Failed to generate learning path. Please try again.');
