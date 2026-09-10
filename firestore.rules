@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection - users can read and write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Allow users to read and write their own competency progress
+      match /competencyProgress/{competencyId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Allow users to read and write their own profile
+      match /profile/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Competencies collection - public read access
+    match /competencies/{competencyId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Resources collection - public read access
+    match /resources/{resourceId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+
+      // Reviews subcollection
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      }
+    }
+
+    // Learning Paths - users can read and write their own
+    match /learningPaths/{pathId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Assessments - users can read and write their own
+    match /assessments/{assessmentId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Questions collection - public read for assessment generation
+    match /questions/{questionId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

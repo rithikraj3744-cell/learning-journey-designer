@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Path Generation</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 30px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .container {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    h1 { color: #60a5fa; margin-top: 0; }
+    h2 { color: #818cf8; margin-top: 30px; }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px 10px 0;
+      font-weight: 600;
+    }
+    button:hover { background: #2563eb; }
+    button:disabled {
+      background: #475569;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 8px;
+      background: #334155;
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .success { background: #065f46; color: #d1fae5; }
+    .error { background: #7f1d1d; color: #fecaca; }
+    .warning { background: #78350f; color: #fef3c7; }
+    .info { background: #1e3a8a; color: #bfdbfe; }
+    input, select {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background: #334155;
+      color: #e2e8f0;
+      font-size: 14px;
+      margin: 5px 0;
+      width: 100%;
+      max-width: 400px;
+    }
+    .path-list {
+      margin-top: 20px;
+    }
+    .path-item {
+      background: #334155;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border-left: 4px solid #3b82f6;
+    }
+    .path-item h3 {
+      margin: 0 0 10px 0;
+      color: #60a5fa;
+    }
+    .path-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .stat {
+      background: #1e293b;
+      padding: 10px;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: bold;
+      color: #60a5fa;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Debug Learning Path Generation</h1>
+    <p>This tool will help diagnose why paths aren't showing competency data correctly.</p>
+
+    <div id="auth-section">
+      <h2>Step 1: Login</h2>
+      <button id="loginBtn" onclick="login()">Login with Google</button>
+      <div id="userInfo" style="display:none; margin-top: 10px;"></div>
+    </div>
+
+    <div id="check-section" style="display:none;">
+      <h2>Step 2: Check Your Paths</h2>
+      <button onclick="checkPaths()">Load My Paths</button>
+      <button onclick="checkCompetencies()">Check Competency Data</button>
+      <div id="pathsList" class="path-list"></div>
+    </div>
+
+    <div id="fix-section" style="display:none;">
+      <h2>Step 3: Test Path Creation</h2>
+      <button onclick="testCreatePath()">Create Test Path</button>
+    </div>
+
+    <div id="status" class="status" style="display:none;"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+    import { getFirestore, collection, getDocs, addDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDTVKMPzM_TGP-J8c0RqXq2CyxAB5KrTRk",
+      authDomain: "learning-journey-designe-5335a.firebaseapp.com",
+      projectId: "learning-journey-designe-5335a",
+      storageBucket: "learning-journey-designe-5335a.firebasestorage.app",
+      messagingSenderId: "858175695992",
+      appId: "1:858175695992:web:fcf74cfef81e7bfbbe42c7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.login = async function() {
+      const provider = new GoogleAuthProvider();
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        showStatus('Error logging in: ' + error.message, 'error');
+      }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById('auth-section').innerHTML = `
+          <h2>✅ Logged in</h2>
+          <p>User: <strong>${user.email}</strong></p>
+        `;
+        document.getElementById('check-section').style.display = 'block';
+        document.getElementById('fix-section').style.display = 'block';
+      }
+    });
+
+    window.checkPaths = async function() {
+      const user = auth.currentUser;
+      if (!user) {
+        showStatus('Please login first', 'error');
+        return;
+      }
+
+      try {
+        showStatus('Loading paths from Firestore...', 'info');
+
+        const pathsRef = collection(db, 'users', user.uid, 'learningPaths');
+        const snapshot = await getDocs(pathsRef);
+
+        if (snapshot.empty) {
+          showStatus('No paths found in database.', 'warning');
+          return;
+        }
+
+        let output = `Found ${snapshot.docs.length} path(s):\n\n`;
+        const pathsList = document.getElementById('pathsList');
+        pathsList.innerHTML = '';
+
+        snapshot.docs.forEach((doc, index) => {
+          const data = doc.data();
+
+          output += `\n=== Path ${index + 1}: ${data.title || data.name || 'Untitled'} ===\n`;
+          output += `ID: ${doc.id}\n`;
+          output += `Competencies field type: ${Array.isArray(data.competencies) ? 'Array' : typeof data.competencies}\n`;
+          output += `Competencies count: ${data.competencies?.length || 0}\n`;
+
+          if (data.competencies && data.competencies.length > 0) {
+            const firstComp = data.competencies[0];
+            output += `First competency type: ${typeof firstComp}\n`;
+            if (typeof firstComp === 'string') {
+              output += `⚠️ PROBLEM: Competencies are strings, not objects!\n`;
+              output += `Value: "${firstComp}"\n`;
+            } else {
+              output += `First competency: ${JSON.stringify(firstComp, null, 2)}\n`;
+            }
+          }
+
+          output += `Total Hours: ${data.totalHours || 'MISSING'}\n`;
+          output += `Estimated Weeks: ${data.estimatedWeeks || 'MISSING'}\n`;
+          output += `Time Available: ${data.timeAvailable || 'MISSING'}\n`;
+          output += '\n';
+
+          // Display in UI
+          const pathDiv = document.createElement('div');
+          pathDiv.className = 'path-item';
+          pathDiv.innerHTML = `
+            <h3>${data.title || data.name || 'Untitled Path'}</h3>
+            <div class="path-stats">
+              <div class="stat">
+                <div class="stat-label">Competencies</div>
+                <div class="stat-value">${data.competencies?.length || 0}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Type</div>
+                <div class="stat-value">${data.competencies?.[0] ? typeof data.competencies[0] : 'N/A'}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Total Hours</div>
+                <div class="stat-value">${data.totalHours || '0'}</div>
+              </div>
+              <div class="stat">
+                <div class="stat-label">Est. Weeks</div>
+                <div class="stat-value">${data.estimatedWeeks || '0'}</div>
+              </div>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #1e293b; border-radius: 4px; font-size: 12px;">
+              ${typeof data.competencies?.[0] === 'string' ?
+                '<span style="color: #fca5a5;">❌ Issue: Competencies stored as strings</span>' :
+                '<span style="color: #86efac;">✅ Competencies stored correctly</span>'}
+            </div>
+          `;
+          pathsList.appendChild(pathDiv);
+        });
+
+        showStatus(output, 'info');
+      } catch (error) {
+        showStatus('Error loading paths:\n' + error.message + '\n' + error.stack, 'error');
+      }
+    };
+
+    window.checkCompetencies = async function() {
+      showStatus('Checking competency data availability...', 'info');
+
+      try {
+        // Try to fetch the competency data from your app
+        const response = await fetch('/src/data/competency-taxonomy.json');
+        if (response.ok) {
+          const data = await response.json();
+          showStatus(`✅ Competency data loaded successfully!\n\nTotal competencies: ${data.competencies?.length || 0}\n\nFirst 3 competencies:\n${JSON.stringify(data.competencies?.slice(0, 3), null, 2)}`, 'success');
+        } else {
+          showStatus('⚠️ Could not fetch competency data file from /src/data/', 'warning');
+        }
+      } catch (error) {
+        showStatus('Error checking competencies:\n' + error.message, 'error');
+      }
+    };
+
+    window.testCreatePath = async function() {
+      const user = auth.currentUser;
+      if (!user) {
+        showStatus('Please login first', 'error');
+        return;
+      }
+
+      try {
+        showStatus('Creating test path with proper competency objects...', 'info');
+
+        // Create a test path with proper structure
+        const testCompetencies = [
+          {
+            id: "test-comp-1",
+            name: "Test Competency 1",
+            category: "Test",
+            subcategory: "Testing",
+            description: "This is a test competency",
+            difficulty: 3,
+            estimatedHours: 20,
+            prerequisites: [],
+            keywords: ["test"]
+          },
+          {
+            id: "test-comp-2",
+            name: "Test Competency 2",
+            category: "Test",
+            subcategory: "Testing",
+            description: "Another test competency",
+            difficulty: 2,
+            estimatedHours: 15,
+            prerequisites: [],
+            keywords: ["test"]
+          }
+        ];
+
+        const totalHours = testCompetencies.reduce((sum, c) => sum + c.estimatedHours, 0);
+        const timeAvailable = 10;
+        const estimatedWeeks = Math.ceil(totalHours / timeAvailable);
+
+        const testPath = {
+          userId: user.uid,
+          title: "TEST PATH - " + new Date().toISOString(),
+          name: "Test Path",
+          description: "Test path created by debug tool",
+          competencies: testCompetencies,
+          targetCompetencies: ["test-comp-1", "test-comp-2"],
+          totalHours,
+          estimatedWeeks,
+          timeAvailable,
+          preferences: {
+            learningStyle: 'visual',
+            preferredResourceTypes: ['video', 'course']
+          },
+          progress: 0,
+          completedCompetencies: [],
+          status: 'active',
+          type: 'test',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        const docRef = await addDoc(
+          collection(db, 'users', user.uid, 'learningPaths'),
+          testPath
+        );
+
+        showStatus(`✅ Test path created successfully!\n\nPath ID: ${docRef.id}\n\nNow check "My Learning Paths" in your app to see if this displays correctly.\n\nPath data:\n${JSON.stringify(testPath, null, 2)}`, 'success');
+
+        // Reload paths
+        setTimeout(() => window.checkPaths(), 1000);
+      } catch (error) {
+        showStatus('Error creating test path:\n' + error.message + '\n' + error.stack, 'error');
+      }
+    };
+
+    function showStatus(message, type) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+      statusDiv.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

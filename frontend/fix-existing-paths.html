@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fix Existing Learning Paths</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    .container {
+      background: #2a2a2a;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    h1 { color: #60a5fa; margin-top: 0; }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 0;
+    }
+    button:hover { background: #2563eb; }
+    button:disabled {
+      background: #6b7280;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      background: #374151;
+    }
+    .success { background: #065f46; color: #d1fae5; }
+    .error { background: #7f1d1d; color: #fecaca; }
+    .warning { background: #78350f; color: #fef3c7; }
+    pre {
+      background: #1a1a1a;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Fix Existing Learning Paths</h1>
+    <p>This tool will update your existing learning paths to include full competency data.</p>
+
+    <div id="auth-section">
+      <button id="loginBtn" onclick="login()">Login with Google</button>
+      <div id="userInfo" style="display:none; margin-top: 10px;"></div>
+    </div>
+
+    <div id="fix-section" style="display:none; margin-top: 20px;">
+      <button id="fixBtn" onclick="fixPaths()">Fix All Paths</button>
+    </div>
+
+    <div id="status" class="status" style="display:none;"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+    import { getFirestore, collection, getDocs, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+    // Your Firebase config (replace with your actual config)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDTVKMPzM_TGP-J8c0RqXq2CyxAB5KrTRk",
+      authDomain: "learning-journey-designe-5335a.firebaseapp.com",
+      projectId: "learning-journey-designe-5335a",
+      storageBucket: "learning-journey-designe-5335a.firebasestorage.app",
+      messagingSenderId: "858175695992",
+      appId: "1:858175695992:web:fcf74cfef81e7bfbbe42c7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Competency list (from your data)
+    const competencyList = [
+      {
+        "id": "data-structures-basics",
+        "name": "Data Structures Fundamentals",
+        "category": "Technical",
+        "subcategory": "Data Structures & Algorithms",
+        "description": "Understanding and implementing fundamental data structures",
+        "difficulty": 2,
+        "estimatedHours": 40,
+        "prerequisites": [],
+        "keywords": ["arrays", "linked lists", "stacks", "queues", "trees", "graphs"]
+      },
+      {
+        "id": "algorithms-analysis",
+        "name": "Algorithm Analysis",
+        "category": "Technical",
+        "subcategory": "Data Structures & Algorithms",
+        "description": "Analyzing time and space complexity of algorithms",
+        "difficulty": 3,
+        "estimatedHours": 30,
+        "prerequisites": ["data-structures-basics"],
+        "keywords": ["big o", "complexity", "analysis", "performance"]
+      },
+      {
+        "id": "sorting-searching",
+        "name": "Sorting and Searching Algorithms",
+        "category": "Technical",
+        "subcategory": "Data Structures & Algorithms",
+        "description": "Implementing and optimizing sorting and searching algorithms",
+        "difficulty": 2,
+        "estimatedHours": 25,
+        "prerequisites": ["data-structures-basics"],
+        "keywords": ["quicksort", "mergesort", "binary search", "sorting"]
+      }
+      // Add more competencies as needed
+    ];
+
+    window.login = async function() {
+      const provider = new GoogleAuthProvider();
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        showStatus('Error logging in: ' + error.message, 'error');
+      }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById('auth-section').innerHTML = `
+          <p>Logged in as: <strong>${user.email}</strong></p>
+        `;
+        document.getElementById('fix-section').style.display = 'block';
+      }
+    });
+
+    window.fixPaths = async function() {
+      const user = auth.currentUser;
+      if (!user) {
+        showStatus('Please login first', 'error');
+        return;
+      }
+
+      const fixBtn = document.getElementById('fixBtn');
+      fixBtn.disabled = true;
+      fixBtn.textContent = 'Fixing...';
+
+      try {
+        showStatus('Loading paths...', 'warning');
+
+        const pathsRef = collection(db, 'users', user.uid, 'learningPaths');
+        const snapshot = await getDocs(pathsRef);
+
+        let fixed = 0;
+        let skipped = 0;
+        const errors = [];
+
+        for (const pathDoc of snapshot.docs) {
+          const pathData = pathDoc.data();
+
+          // Check if path needs fixing
+          const needsFix = pathData.competencies &&
+                          Array.isArray(pathData.competencies) &&
+                          pathData.competencies.length > 0 &&
+                          typeof pathData.competencies[0] === 'string';
+
+          if (!needsFix) {
+            skipped++;
+            continue;
+          }
+
+          try {
+            // Get full competency objects
+            const fullCompetencies = pathData.competencies
+              .map(id => competencyList.find(c => c.id === id))
+              .filter(c => c !== undefined);
+
+            if (fullCompetencies.length === 0) {
+              errors.push(`Path ${pathDoc.id}: No matching competencies found`);
+              continue;
+            }
+
+            // Calculate totals
+            const totalHours = fullCompetencies.reduce((sum, c) => sum + (c.estimatedHours || 10), 0);
+            const timeAvailable = pathData.timeAvailable || 10;
+            const estimatedWeeks = Math.ceil(totalHours / timeAvailable);
+
+            // Update path
+            await updateDoc(doc(db, 'users', user.uid, 'learningPaths', pathDoc.id), {
+              competencies: fullCompetencies,
+              targetCompetencies: pathData.competencies, // Save original IDs
+              totalHours,
+              estimatedWeeks,
+              timeAvailable,
+              preferences: pathData.preferences || {
+                learningStyle: 'visual',
+                preferredResourceTypes: ['video', 'course']
+              },
+              updatedAt: new Date()
+            });
+
+            fixed++;
+          } catch (error) {
+            errors.push(`Path ${pathDoc.id}: ${error.message}`);
+          }
+        }
+
+        let message = `✅ Fixed ${fixed} paths, skipped ${skipped} (already correct)`;
+        if (errors.length > 0) {
+          message += `\n\n❌ Errors:\n${errors.join('\n')}`;
+        }
+
+        showStatus(message, fixed > 0 ? 'success' : 'warning');
+
+      } catch (error) {
+        showStatus('Error: ' + error.message, 'error');
+      } finally {
+        fixBtn.disabled = false;
+        fixBtn.textContent = 'Fix All Paths';
+      }
+    };
+
+    function showStatus(message, type) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+      statusDiv.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

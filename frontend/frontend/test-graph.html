@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        canvas {
+            border: 2px solid #333;
+            background: #0a0a0a;
+            display: block;
+            margin: 20px 0;
+        }
+        .info {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.success {
+            background: #10b981;
+        }
+        .status.error {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 Knowledge Graph Test Page</h1>
+        <div class="info">
+            <p>This page tests if the graph can render with simple data.</p>
+        </div>
+
+        <div id="status" class="status">Initializing...</div>
+
+        <canvas id="graphCanvas" width="1000" height="600"></canvas>
+
+        <div class="info">
+            <h3>Test Data:</h3>
+            <pre id="testData"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Simple test data
+        const testGraphData = {
+            nodes: [
+                { id: 'html', label: 'HTML & CSS', x: 100, y: 300, color: '#3B82F6' },
+                { id: 'js', label: 'JavaScript', x: 300, y: 300, color: '#F59E0B' },
+                { id: 'react', label: 'React', x: 500, y: 300, color: '#3B82F6' },
+                { id: 'node', label: 'Node.js', x: 300, y: 150, color: '#10B981' }
+            ],
+            edges: [
+                { source: 'html', target: 'js' },
+                { source: 'js', target: 'react' },
+                { source: 'js', target: 'node' }
+            ]
+        };
+
+        // Display test data
+        document.getElementById('testData').textContent = JSON.stringify(testGraphData, null, 2);
+
+        // Draw the graph
+        function drawGraph() {
+            const canvas = document.getElementById('graphCanvas');
+            const ctx = canvas.getContext('2d');
+
+            if (!ctx) {
+                document.getElementById('status').textContent = '❌ Canvas not supported';
+                document.getElementById('status').className = 'status error';
+                return;
+            }
+
+            // Clear canvas
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw edges first
+            testGraphData.edges.forEach(edge => {
+                const sourceNode = testGraphData.nodes.find(n => n.id === edge.source);
+                const targetNode = testGraphData.nodes.find(n => n.id === edge.target);
+
+                if (sourceNode && targetNode) {
+                    ctx.beginPath();
+                    ctx.moveTo(sourceNode.x, sourceNode.y);
+                    ctx.lineTo(targetNode.x, targetNode.y);
+                    ctx.strokeStyle = '#4B5563';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Draw arrow
+                    const angle = Math.atan2(targetNode.y - sourceNode.y, targetNode.x - sourceNode.x);
+                    const arrowSize = 10;
+                    const arrowX = targetNode.x - 30 * Math.cos(angle);
+                    const arrowY = targetNode.y - 30 * Math.sin(angle);
+
+                    ctx.beginPath();
+                    ctx.moveTo(arrowX, arrowY);
+                    ctx.lineTo(
+                        arrowX - arrowSize * Math.cos(angle - Math.PI / 6),
+                        arrowY - arrowSize * Math.sin(angle - Math.PI / 6)
+                    );
+                    ctx.lineTo(
+                        arrowX - arrowSize * Math.cos(angle + Math.PI / 6),
+                        arrowY - arrowSize * Math.sin(angle + Math.PI / 6)
+                    );
+                    ctx.closePath();
+                    ctx.fillStyle = '#6B7280';
+                    ctx.fill();
+                }
+            });
+
+            // Draw nodes
+            testGraphData.nodes.forEach(node => {
+                // Draw circle
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 28, 0, 2 * Math.PI);
+                ctx.fillStyle = node.color;
+                ctx.fill();
+                ctx.strokeStyle = '#1F2937';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Draw label
+                ctx.fillStyle = '#F9FAFB';
+                ctx.font = '13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillText(node.label, node.x, node.y + 35);
+            });
+
+            document.getElementById('status').textContent = '✅ Graph rendered successfully!';
+            document.getElementById('status').className = 'status success';
+        }
+
+        // Run the test
+        try {
+            drawGraph();
+        } catch (error) {
+            document.getElementById('status').textContent = '❌ Error: ' + error.message;
+            document.getElementById('status').className = 'status error';
+            console.error(error);
+        }
+    </script>
+</body>
+</html>
