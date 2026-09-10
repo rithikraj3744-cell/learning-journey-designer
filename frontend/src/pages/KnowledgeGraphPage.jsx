@@ -4,6 +4,7 @@ import axios from 'axios'
 import { useAuth } from '../contexts/AuthContext'
 import { getUserAssessments } from '../services/firestore'
 import KnowledgeGraph from '../components/KnowledgeGraph'
+import CompetencyScoreModal from '../components/CompetencyScoreModal'
 import { Target, Filter, Search, TrendingUp, BookOpen, AlertCircle, Award } from 'lucide-react'
 import knowledgeGraphService, { CareerRoles } from '../services/knowledgeGraphService'
 
@@ -29,6 +30,8 @@ const KnowledgeGraphPage = () => {
   const [showPathToRole, setShowPathToRole] = useState(false)
   const [userAssessments, setUserAssessments] = useState([])
   const [completedCompetencies, setCompletedCompetencies] = useState([])
+  const [showScoreModal, setShowScoreModal] = useState(false)
+  const [selectedCompetency, setSelectedCompetency] = useState(null)
 
   // Load initial graph data
   useEffect(() => {
@@ -214,13 +217,19 @@ const KnowledgeGraphPage = () => {
   const handleNodeClick = (node) => {
     setSelectedNode(node)
 
-    // Navigate to competency learning page if it's a competency (not a role)
+    // Show score modal for competencies (not roles)
     if (node.category && node.category !== 'role') {
-      console.log('Navigating to learning page for:', node.id)
-      navigate(`/learn/${node.id}`)
+      console.log('Opening score modal for:', node.id)
+      setSelectedCompetency(node)
+      setShowScoreModal(true)
     } else {
-      console.log('Node is a role, not navigating:', node)
+      console.log('Node is a role, showing info only:', node)
     }
+  }
+
+  const handleCloseModal = () => {
+    setShowScoreModal(false)
+    setSelectedCompetency(null)
   }
 
   const handleViewModeChange = async (mode) => {
@@ -656,6 +665,13 @@ const KnowledgeGraphPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Score Modal */}
+      <CompetencyScoreModal
+        competency={selectedCompetency}
+        isOpen={showScoreModal}
+        onClose={handleCloseModal}
+      />
     </div>
   )
 }

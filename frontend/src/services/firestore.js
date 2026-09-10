@@ -636,3 +636,82 @@ export const timestampToDate = (timestamp) => {
 export const dateToTimestamp = (date) => {
   return Timestamp.fromDate(date)
 }
+
+// ============================================================================
+// COMPETENCY PROGRESS TRACKING
+// ============================================================================
+
+/**
+ * Get competency progress for a user (assessment scores, history, weak areas)
+ */
+export const getCompetencyProgress = async (userId, competencyId) => {
+  try {
+    const progressRef = doc(db, 'users', userId, 'competencyProgress', competencyId)
+    const progressDoc = await getDoc(progressRef)
+
+    if (progressDoc.exists()) {
+      return { id: progressDoc.id, ...progressDoc.data() }
+    }
+    return null
+  } catch (error) {
+    console.error('Error getting competency progress:', error)
+    throw error
+  }
+}
+
+/**
+ * Get all competency progress for a user
+ */
+export const getAllCompetencyProgress = async (userId) => {
+  try {
+    const progressRef = collection(db, 'users', userId, 'competencyProgress')
+    const querySnapshot = await getDocs(progressRef)
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+  } catch (error) {
+    console.error('Error getting all competency progress:', error)
+    throw error
+  }
+}
+
+/**
+ * Get topic recommendations based on weak areas
+ */
+export const getTopicRecommendations = (weakAreas, competencyName) => {
+  if (!weakAreas || weakAreas.length === 0) {
+    return {
+      status: 'strong',
+      message: `Great job! You have a strong understanding of ${competencyName}.`,
+      recommendations: []
+    }
+  }
+
+  // Group weak areas by topic
+  const topicGroups = {}
+  weakAreas.forEach(item => {
+    const topic = item.topic || competencyName
+    if (!topicGroups[topic]) {
+      topicGroups[topic] = []
+    }
+    topicGroups[topic].push(item)
+  })
+
+  // Create recommendations
+  const recommendations = Object.entries(topicGroups).map(([topic, items]) => ({
+    topic,
+    questionsWrong: items.length,
+    focusAreas: items.map(item => item.question).slice(0, 3), // Top 3 questions
+    priority: items.length >= 3 ? 'high' : items.length >= 2 ? 'medium' : 'low'
+  }))
+
+  // Sort by priority
+  recommendations.sort((a, b) => {
+    const priorityOrder = { high: 0, medium: 1, low: 2 }
+    return priorityOrder[a.priority] - priorityOrder[b.priority]
+  })
+
+  return {
+    status: 'needs-improvement',
+    message: `Focus on these areas to improve your ${competencyName} skills.`,
+    recommendations
+  }
+}
