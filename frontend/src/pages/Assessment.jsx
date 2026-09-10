@@ -533,10 +533,14 @@ const Assessment = () => {
               Take Another Assessment
             </button>
             <button
-              onClick={() => window.location.href = '/knowledge-graph'}
+              onClick={() => {
+                // Navigate back to knowledge graph and trigger modal for this competency
+                const competencyId = selectedCompetency?.id || 'javascript'
+                window.location.href = `/knowledge-graph?openNode=${competencyId}`
+              }}
               className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-colors"
             >
-              View Knowledge Graph
+              View My Progress
             </button>
           </div>
         </div>

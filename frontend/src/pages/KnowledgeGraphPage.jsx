@@ -44,6 +44,24 @@ const KnowledgeGraphPage = () => {
     loadUserAssessmentsData()
   }, [currentUser])
 
+  // Check for openNode parameter in URL to auto-open modal
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const openNodeId = params.get('openNode')
+
+    if (openNodeId && graphData && !showScoreModal) {
+      // Find the node in graphData
+      const node = graphData.nodes?.find(n => n.id === openNodeId)
+      if (node) {
+        console.log('Auto-opening modal for node:', openNodeId)
+        setSelectedCompetency(node)
+        setShowScoreModal(true)
+        // Clean URL after opening
+        window.history.replaceState({}, '', '/knowledge-graph')
+      }
+    }
+  }, [graphData, showScoreModal])
+
   const loadUserAssessmentsData = async () => {
     if (!currentUser) {
       console.log('No user logged in, skipping assessment data load')
