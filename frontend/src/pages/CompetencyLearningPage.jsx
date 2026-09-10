@@ -119,6 +119,9 @@ const CompetencyLearningPage = () => {
           // First time learning this competency - generate resources
           await generateLearningResources(comp);
         }
+      } else {
+        // Not logged in - still generate resources for viewing
+        await generateLearningResources(comp);
       }
     } catch (error) {
       console.error('Error loading competency:', error);
