@@ -128,17 +128,18 @@ const CompetencyLearningPage = () => {
   };
 
   const generateLearningResources = async (comp) => {
-    // Generate YouTube resources based on competency
+    // Generate YouTube resources based on competency with better search URLs
     const youtubeResources = [
       {
         id: '1',
         type: 'video',
-        title: `${comp.name} - Complete Tutorial`,
+        title: `${comp.name} - Complete Tutorial for Beginners`,
         platform: 'YouTube',
-        url: `https://www.youtube.com/results?search_query=${encodeURIComponent(comp.name + ' tutorial')}`,
-        duration: '45 min',
+        url: `https://www.youtube.com/results?search_query=${encodeURIComponent(comp.name + ' complete tutorial 2024')}`,
+        duration: '2-4 hours',
         difficulty: comp.difficulty,
-        completed: false
+        completed: false,
+        description: `Comprehensive introduction to ${comp.name}`
       },
       {
         id: '2',
@@ -146,19 +147,43 @@ const CompetencyLearningPage = () => {
         title: `${comp.name} - Crash Course`,
         platform: 'YouTube',
         url: `https://www.youtube.com/results?search_query=${encodeURIComponent(comp.name + ' crash course')}`,
-        duration: '30 min',
+        duration: '30-60 min',
         difficulty: comp.difficulty,
-        completed: false
+        completed: false,
+        description: `Quick overview and essential concepts`
       },
       {
         id: '3',
         type: 'video',
-        title: `${comp.name} - Best Practices`,
+        title: `${comp.name} - Best Practices & Tips`,
         platform: 'YouTube',
-        url: `https://www.youtube.com/results?search_query=${encodeURIComponent(comp.name + ' best practices')}`,
-        duration: '25 min',
+        url: `https://www.youtube.com/results?search_query=${encodeURIComponent(comp.name + ' best practices tips tricks')}`,
+        duration: '20-40 min',
         difficulty: comp.difficulty,
-        completed: false
+        completed: false,
+        description: `Learn industry best practices`
+      },
+      {
+        id: '4',
+        type: 'video',
+        title: `${comp.name} - Real-World Projects`,
+        platform: 'YouTube',
+        url: `https://www.youtube.com/results?search_query=${encodeURIComponent(comp.name + ' project tutorial')}`,
+        duration: '1-3 hours',
+        difficulty: comp.difficulty,
+        completed: false,
+        description: `Build practical projects to solidify learning`
+      },
+      {
+        id: '5',
+        type: 'video',
+        title: `${comp.name} - Advanced Concepts`,
+        platform: 'YouTube',
+        url: `https://www.youtube.com/results?search_query=${encodeURIComponent(comp.name + ' advanced tutorial')}`,
+        duration: '45-90 min',
+        difficulty: comp.difficulty,
+        completed: false,
+        description: `Deep dive into advanced topics`
       }
     ];
 

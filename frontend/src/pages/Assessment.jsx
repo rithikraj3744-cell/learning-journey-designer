@@ -23,6 +23,72 @@ const Assessment = () => {
     loadCompetencies()
   }, [])
 
+  // Auto-select competency from URL params and generate quiz
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const competencyParam = params.get('competency')
+
+    if (competencyParam && competencies.length > 0 && !selectedCompetency) {
+      // Map knowledge graph ID to competency
+      const mapKnowledgeGraphIdToCompetency = (graphId) => {
+        let comp = competencies.find(c => c.id === graphId)
+        if (comp) return comp
+
+        const normalizedGraphId = graphId.toLowerCase().replace(/-/g, ' ')
+        comp = competencies.find(c => {
+          const normalizedName = c.name.toLowerCase()
+          const normalizedKeywords = c.keywords?.map(k => k.toLowerCase()) || []
+          return normalizedName.includes(normalizedGraphId) ||
+                 normalizedGraphId.includes(normalizedName) ||
+                 normalizedKeywords.some(k => k.includes(normalizedGraphId) || normalizedGraphId.includes(k))
+        })
+
+        if (comp) return comp
+
+        const manualMappings = {
+          'html-css': 'comp-007',
+          'javascript': 'comp-002',
+          'react': 'comp-003',
+          'vue': 'comp-004',
+          'angular': 'comp-005',
+          'typescript': 'comp-006',
+          'python': 'comp-001',
+          'node': 'comp-010',
+          'nodejs': 'comp-010',
+          'express': 'comp-011',
+          'sql': 'comp-012',
+          'mongodb': 'comp-013',
+          'databases': 'comp-012',
+          'api-design': 'comp-014',
+          'rest-api': 'comp-014',
+          'graphql': 'comp-015',
+          'git': 'comp-016',
+          'docker': 'comp-017',
+          'kubernetes': 'comp-018',
+          'aws': 'comp-019',
+          'ui-ux': 'comp-020',
+          'responsive-design': 'comp-021'
+        }
+
+        const mappedId = manualMappings[graphId.toLowerCase()]
+        if (mappedId) {
+          return competencies.find(c => c.id === mappedId)
+        }
+
+        return null
+      }
+
+      const comp = mapKnowledgeGraphIdToCompetency(competencyParam)
+      if (comp) {
+        setSelectedCompetency(comp)
+        // Auto-generate quiz after a short delay
+        setTimeout(() => {
+          handleGenerateQuizForCompetency(comp)
+        }, 500)
+      }
+    }
+  }, [competencies, selectedCompetency])
+
   const loadCompetencies = async () => {
     try {
       setLoadingCompetencies(true)
@@ -36,8 +102,8 @@ const Assessment = () => {
     }
   }
 
-  const handleGenerateQuiz = async () => {
-    if (!selectedCompetency) {
+  const handleGenerateQuizForCompetency = async (comp) => {
+    if (!comp) {
       setError('Please select a competency first')
       return
     }
@@ -50,12 +116,12 @@ const Assessment = () => {
     setShowResults(false)
 
     try {
-      console.log('Generating quiz for:', selectedCompetency.name, 'Difficulty:', difficulty)
+      console.log('Generating quiz for:', comp.name, 'Difficulty:', difficulty)
       const result = await aiService.generateQuiz(
-        selectedCompetency.name,
+        comp.name,
         5,
         difficulty,
-        `Focus on ${selectedCompetency.category} - ${selectedCompetency.subcategory}`
+        `Focus on ${comp.category} - ${comp.subcategory}`
       )
 
       if (result.questions && result.questions.length > 0) {
@@ -70,6 +136,10 @@ const Assessment = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleGenerateQuiz = async () => {
+    await handleGenerateQuizForCompetency(selectedCompetency)
   }
 
   const handleAnswerSelect = (answerIndex) => {
