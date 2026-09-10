@@ -214,9 +214,12 @@ const KnowledgeGraphPage = () => {
   const handleNodeClick = (node) => {
     setSelectedNode(node)
 
-    // Navigate to competency learning page if it's a competency
-    if (node.type === 'competency') {
+    // Navigate to competency learning page if it's a competency (not a role)
+    if (node.category && node.category !== 'role') {
+      console.log('Navigating to learning page for:', node.id)
       navigate(`/learn/${node.id}`)
+    } else {
+      console.log('Node is a role, not navigating:', node)
     }
   }
 
