@@ -5,8 +5,8 @@ services:
     region: oregon
     plan: free
     branch: main
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend && gunicorn app_standalone:app
+    buildCommand: cd backend/deploy && pip install -r requirements.txt
+    startCommand: cd backend/deploy && gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -16,10 +16,3 @@ services:
         value: 10000
       - key: GEMINI_API_KEY
         sync: false
-      - key: HF_API_TOKEN
-        sync: false
-      - key: FIREBASE_CREDENTIALS
-        sync: false
-      - key: ALLOWED_ORIGINS
-        sync: false
-    healthCheckPath: /api/health
