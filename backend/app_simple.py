@@ -6,18 +6,38 @@ Works without Firebase - only provides AI features
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
+import sys
+
+# Add current directory to path
+sys.path.insert(0, os.path.dirname(__file__))
 
 # Import AI service
+ai_service = None
 try:
     from app.services.ai_service import AIService
     ai_service = AIService()
     print("✓ AI Service initialized")
 except Exception as e:
     print(f"✗ AI Service init failed: {e}")
-    ai_service = None
+    import traceback
+    traceback.print_exc()
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint"""
+    return jsonify({
+        'message': 'Learning Journey AI Backend',
+        'status': 'running',
+        'endpoints': [
+            '/api/health',
+            '/api/ai/quiz',
+            '/api/ai/explain',
+            '/api/ai/summarize'
+        ]
+    })
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -25,13 +45,13 @@ def health_check():
     return jsonify({
         'status': 'ok',
         'message': 'AI Backend is running',
-        'ai_available': ai_service is not None
+        'ai_available': ai_service is not None and ai_service.model is not None
     })
 
 @app.route('/api/ai/quiz', methods=['POST'])
 def generate_quiz():
     """Generate quiz questions"""
-    if not ai_service:
+    if not ai_service or not ai_service.model:
         return jsonify({'error': 'AI service not available'}), 503
 
     try:
@@ -47,25 +67,27 @@ def generate_quiz():
 
         # Generate quiz using AI
         result = ai_service.generate_quiz(
-            competency=competency_name,
+            competency_name=competency_name,
             num_questions=num_questions,
             difficulty=difficulty,
             context=context
         )
 
         return jsonify({
-            'questions': result['questions'],
-            'cached': result.get('cached', False)
+            'questions': result,
+            'cached': False
         })
 
     except Exception as e:
         print(f"Error generating quiz: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/ai/explain', methods=['POST'])
 def explain_concept():
     """Explain a concept"""
-    if not ai_service:
+    if not ai_service or not ai_service.model:
         return jsonify({'error': 'AI service not available'}), 503
 
     try:
@@ -79,25 +101,27 @@ def explain_concept():
             return jsonify({'error': 'competency_name is required'}), 400
 
         # Explain concept using AI
-        result = ai_service.explain_concept(
-            concept=competency_name,
+        result = ai_service.generate_explanation(
+            competency_name=competency_name,
             user_level=user_level,
-            context=user_background
+            user_background=user_background
         )
 
         return jsonify({
-            'explanation': result['explanation'],
-            'cached': result.get('cached', False)
+            'explanation': result,
+            'cached': False
         })
 
     except Exception as e:
         print(f"Error explaining concept: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/ai/summarize', methods=['POST'])
 def summarize_resource():
     """Summarize a resource"""
-    if not ai_service:
+    if not ai_service or not ai_service.model:
         return jsonify({'error': 'AI service not available'}), 503
 
     try:
@@ -110,18 +134,20 @@ def summarize_resource():
             return jsonify({'error': 'content is required'}), 400
 
         # Summarize using AI
-        result = ai_service.summarize_content(
+        result = ai_service.generate_summary(
             content=content,
             title=title
         )
 
         return jsonify({
-            'summary': result['summary'],
-            'cached': result.get('cached', False)
+            'summary': result,
+            'cached': False
         })
 
     except Exception as e:
         print(f"Error summarizing resource: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.errorhandler(404)
@@ -134,4 +160,9 @@ def internal_error(error):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
+    print(f"Starting server on port {port}")
+    print(f"AI Service available: {ai_service is not None}")
+    if ai_service:
+        print(f"AI Model loaded: {ai_service.model is not None}")
     app.run(host='0.0.0.0', port=port, debug=False)
+
