@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Target, Calendar, TrendingUp, Plus, Trash2, CheckCircle, Clock } from 'lucide-react'
 import { db, auth } from '../firebase'
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, where } from 'firebase/firestore'
+import { competencyList } from '../data'
 
 const GoalSetting = () => {
   const navigate = useNavigate()
@@ -38,13 +39,8 @@ const GoalSetting = () => {
   }
 
   const loadCompetencies = async () => {
-    const competenciesRef = collection(db, 'competencies')
-    const snapshot = await getDocs(competenciesRef)
-    const competenciesData = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
-    setCompetencies(competenciesData)
+    // Load from local JSON data instead of Firestore
+    setCompetencies(competencyList)
   }
 
   const handleCreateGoal = async () => {
