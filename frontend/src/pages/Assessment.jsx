@@ -160,16 +160,83 @@ const Assessment = () => {
     }
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Calculate score
     let correct = 0
+    const wrongAnswers = []
+
     questions.forEach((q, index) => {
       if (answers[index] === q.correct_answer) {
         correct++
+      } else {
+        wrongAnswers.push({
+          question: q.question,
+          yourAnswer: q.options[answers[index]],
+          correctAnswer: q.options[q.correct_answer],
+          topic: q.topic || selectedCompetency?.name
+        })
       }
     })
-    setScore(Math.round((correct / questions.length) * 100))
+
+    const finalScore = Math.round((correct / questions.length) * 100)
+    setScore(finalScore)
     setShowResults(true)
+
+    // Save score to Firestore if user is authenticated
+    if (currentUser && selectedCompetency) {
+      try {
+        const { db } = await import('../firebase')
+        const { doc, setDoc, updateDoc, getDoc, serverTimestamp } = await import('firebase/firestore')
+
+        const progressRef = doc(
+          db,
+          'users',
+          currentUser.uid,
+          'competencyProgress',
+          selectedCompetency.id
+        )
+
+        const progressDoc = await getDoc(progressRef)
+        const assessmentData = {
+          competencyId: selectedCompetency.id,
+          competencyName: selectedCompetency.name,
+          score: finalScore,
+          correctAnswers: correct,
+          totalQuestions: questions.length,
+          wrongAnswers: wrongAnswers,
+          completedAt: new Date(),
+          difficulty: difficulty
+        }
+
+        if (progressDoc.exists()) {
+          // Update existing progress
+          await updateDoc(progressRef, {
+            lastAssessmentScore: finalScore,
+            lastAssessmentDate: new Date(),
+            assessmentHistory: progressDoc.data().assessmentHistory
+              ? [...progressDoc.data().assessmentHistory, assessmentData]
+              : [assessmentData],
+            weakAreas: wrongAnswers.length > 0 ? wrongAnswers : null
+          })
+        } else {
+          // Create new progress document
+          await setDoc(progressRef, {
+            competencyId: selectedCompetency.id,
+            competencyName: selectedCompetency.name,
+            userId: currentUser.uid,
+            lastAssessmentScore: finalScore,
+            lastAssessmentDate: new Date(),
+            assessmentHistory: [assessmentData],
+            weakAreas: wrongAnswers.length > 0 ? wrongAnswers : null,
+            createdAt: new Date()
+          })
+        }
+
+        console.log('Assessment score saved successfully')
+      } catch (error) {
+        console.error('Error saving assessment score:', error)
+      }
+    }
   }
 
   const handleRestart = () => {

@@ -29,6 +29,8 @@ const CompetencyLearningPage = () => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [assessmentScore, setAssessmentScore] = useState(null);
+  const [weakAreas, setWeakAreas] = useState([]);
 
   // Map knowledge graph IDs to competency data IDs
   const mapKnowledgeGraphIdToCompetency = (graphId) => {
@@ -122,6 +124,13 @@ const CompetencyLearningPage = () => {
             // Only update resources if we have saved ones
             if (progressDoc.data().resources && progressDoc.data().resources.length > 0) {
               setResources(progressDoc.data().resources);
+            }
+            // Load assessment score and weak areas
+            if (progressDoc.data().lastAssessmentScore) {
+              setAssessmentScore(progressDoc.data().lastAssessmentScore);
+            }
+            if (progressDoc.data().weakAreas) {
+              setWeakAreas(progressDoc.data().weakAreas);
             }
           }
         } catch (error) {
@@ -448,6 +457,75 @@ const CompetencyLearningPage = () => {
               <PlayCircle className="w-5 h-5" />
               Continue Learning
             </button>
+          </div>
+        )}
+
+        {/* Assessment Score & Recommendations */}
+        {assessmentScore !== null && (
+          <div className="mb-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                <div>
+                  <h3 className="text-xl font-bold text-purple-900 dark:text-purple-100">
+                    Last Assessment Score
+                  </h3>
+                  <p className="text-purple-700 dark:text-purple-300 text-sm">
+                    Your performance on this competency
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-4xl font-bold text-purple-600 dark:text-purple-400">
+                  {assessmentScore}%
+                </div>
+                <div className="text-sm text-purple-700 dark:text-purple-300">
+                  {assessmentScore >= 90 ? '🎉 Excellent!' :
+                   assessmentScore >= 70 ? '👍 Good Job!' :
+                   assessmentScore >= 50 ? '📚 Keep Learning' :
+                   '💪 Keep Trying'}
+                </div>
+              </div>
+            </div>
+
+            {weakAreas && weakAreas.length > 0 && (
+              <div className="mt-4 p-4 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-orange-600" />
+                  Areas to Focus On
+                </h4>
+                <div className="space-y-3">
+                  {weakAreas.slice(0, 3).map((area, index) => (
+                    <div key={index} className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                        {area.question}
+                      </p>
+                      <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
+                        <span className="text-red-600 dark:text-red-400">✗ Your answer:</span>
+                        <span>{area.yourAnswer}</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
+                        <span className="text-green-600 dark:text-green-400">✓ Correct answer:</span>
+                        <span>{area.correctAnswer}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {weakAreas.length > 3 && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-3">
+                    And {weakAreas.length - 3} more area(s) to review...
+                  </p>
+                )}
+                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-2">
+                    💡 Recommendation:
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Review the learning resources below focusing on these topics, then retake the assessment to improve your score.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
