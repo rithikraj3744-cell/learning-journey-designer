@@ -28,9 +28,9 @@ const CompetencyScoreModal = ({ competency, isOpen, onClose }) => {
         path: `users/${currentUser.uid}/competencyProgress/${competency.id}`
       });
 
-      // Add delay for first load to allow Firestore write to complete
+      // Add smaller delay for first load
       if (retry === 0) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 500)); // Reduced from 1500ms
       }
 
       const progressData = await getCompetencyProgress(currentUser.uid, competency.id);
@@ -57,14 +57,14 @@ const CompetencyScoreModal = ({ competency, isOpen, onClose }) => {
           recommendations: []
         });
       } else {
-        // No data found, might need retry
-        if (retry < 2 && competency.recentScore) {
-          // Retry after 2 seconds if we just completed an assessment
+        // No data found, only retry once
+        if (retry < 1 && competency.recentScore) {
+          // Retry after 1 second if we just completed an assessment
           console.log('No data found, retrying...', retry + 1);
           setTimeout(() => {
             setRetryCount(retry + 1);
             loadProgress(retry + 1);
-          }, 2000);
+          }, 1000); // Reduced from 2000ms
           return;
         }
 
