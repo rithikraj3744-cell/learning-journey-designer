@@ -86,7 +86,8 @@ const CompetencyLearningPage = () => {
 
   useEffect(() => {
     loadCompetencyAndProgress();
-  }, [competencyId, currentUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [competencyId]);
 
   const loadCompetencyAndProgress = async () => {
     try {
@@ -101,27 +102,32 @@ const CompetencyLearningPage = () => {
       }
       setCompetency(comp);
 
-      // Load user's learning progress for this competency
-      if (auth.currentUser) {
-        const progressRef = doc(
-          db,
-          'users',
-          auth.currentUser.uid,
-          'competencyProgress',
-          comp.id // Use the mapped competency ID
-        );
-        const progressDoc = await getDoc(progressRef);
+      // ALWAYS generate resources first for immediate display
+      generateLearningResources(comp);
 
-        if (progressDoc.exists()) {
-          setLearningProgress(progressDoc.data());
-          setResources(progressDoc.data().resources || []);
-        } else {
-          // First time learning this competency - generate resources
-          await generateLearningResources(comp);
+      // Then try to load user progress if authenticated
+      if (auth.currentUser) {
+        try {
+          const progressRef = doc(
+            db,
+            'users',
+            auth.currentUser.uid,
+            'competencyProgress',
+            comp.id
+          );
+          const progressDoc = await getDoc(progressRef);
+
+          if (progressDoc.exists()) {
+            setLearningProgress(progressDoc.data());
+            // Only update resources if we have saved ones
+            if (progressDoc.data().resources && progressDoc.data().resources.length > 0) {
+              setResources(progressDoc.data().resources);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading progress:', error);
+          // Continue anyway - resources are already generated
         }
-      } else {
-        // Not logged in - still generate resources for viewing
-        await generateLearningResources(comp);
       }
     } catch (error) {
       console.error('Error loading competency:', error);
@@ -130,9 +136,10 @@ const CompetencyLearningPage = () => {
     }
   };
 
-  const generateLearningResources = async (comp) => {
+  const generateLearningResources = (comp) => {
     console.log('Generating resources for:', comp.name, comp.id);
-    // Generate YouTube resources based on competency with better search URLs
+
+    // Generate YouTube resources - these will display immediately
     const youtubeResources = [
       {
         id: '1',
@@ -191,45 +198,39 @@ const CompetencyLearningPage = () => {
       }
     ];
 
-    console.log('Generated resources:', youtubeResources.length, 'resources');
+    console.log('Setting resources:', youtubeResources.length, 'items');
     setResources(youtubeResources);
 
-    // Save initial progress to Firestore only if user is authenticated
+    // Save to Firestore in the background (don't await)
     if (auth.currentUser) {
-      try {
-        const progressData = {
-          competencyId: comp.id,
-          competencyName: comp.name,
-          userId: auth.currentUser.uid,
-          resources: youtubeResources,
-          progress: 0,
-          completedResources: 0,
-          totalResources: youtubeResources.length,
-          quizGenerated: false,
-          quizScore: null,
-          assessmentTaken: false,
-          assessmentScore: null,
-          startedAt: new Date(),
-          lastAccessedAt: new Date(),
-          status: 'learning'
-        };
+      const progressData = {
+        competencyId: comp.id,
+        competencyName: comp.name,
+        userId: auth.currentUser.uid,
+        resources: youtubeResources,
+        progress: 0,
+        completedResources: 0,
+        totalResources: youtubeResources.length,
+        quizGenerated: false,
+        quizScore: null,
+        assessmentTaken: false,
+        assessmentScore: null,
+        startedAt: new Date(),
+        lastAccessedAt: new Date(),
+        status: 'learning'
+      };
 
-        const progressRef = doc(
-          db,
-          'users',
-          auth.currentUser.uid,
-          'competencyProgress',
-          comp.id // Use the mapped competency ID
-        );
-        await setDoc(progressRef, progressData);
-        setLearningProgress(progressData);
-        console.log('Saved progress to Firestore');
-      } catch (error) {
+      const progressRef = doc(
+        db,
+        'users',
+        auth.currentUser.uid,
+        'competencyProgress',
+        comp.id
+      );
+
+      setDoc(progressRef, progressData).catch(error => {
         console.error('Error saving progress to Firestore:', error);
-        // Continue anyway - resources are already set
-      }
-    } else {
-      console.log('Not authenticated - displaying resources without progress tracking');
+      });
     }
   };
 
