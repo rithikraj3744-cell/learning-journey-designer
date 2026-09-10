@@ -131,6 +131,7 @@ const CompetencyLearningPage = () => {
   };
 
   const generateLearningResources = async (comp) => {
+    console.log('Generating resources for:', comp.name, comp.id);
     // Generate YouTube resources based on competency with better search URLs
     const youtubeResources = [
       {
@@ -190,36 +191,45 @@ const CompetencyLearningPage = () => {
       }
     ];
 
+    console.log('Generated resources:', youtubeResources.length, 'resources');
     setResources(youtubeResources);
 
-    // Save initial progress to Firestore
+    // Save initial progress to Firestore only if user is authenticated
     if (auth.currentUser) {
-      const progressData = {
-        competencyId: comp.id,
-        competencyName: comp.name,
-        userId: auth.currentUser.uid,
-        resources: youtubeResources,
-        progress: 0,
-        completedResources: 0,
-        totalResources: youtubeResources.length,
-        quizGenerated: false,
-        quizScore: null,
-        assessmentTaken: false,
-        assessmentScore: null,
-        startedAt: new Date(),
-        lastAccessedAt: new Date(),
-        status: 'learning'
-      };
+      try {
+        const progressData = {
+          competencyId: comp.id,
+          competencyName: comp.name,
+          userId: auth.currentUser.uid,
+          resources: youtubeResources,
+          progress: 0,
+          completedResources: 0,
+          totalResources: youtubeResources.length,
+          quizGenerated: false,
+          quizScore: null,
+          assessmentTaken: false,
+          assessmentScore: null,
+          startedAt: new Date(),
+          lastAccessedAt: new Date(),
+          status: 'learning'
+        };
 
-      const progressRef = doc(
-        db,
-        'users',
-        auth.currentUser.uid,
-        'competencyProgress',
-        competencyId
-      );
-      await setDoc(progressRef, progressData);
-      setLearningProgress(progressData);
+        const progressRef = doc(
+          db,
+          'users',
+          auth.currentUser.uid,
+          'competencyProgress',
+          comp.id // Use the mapped competency ID
+        );
+        await setDoc(progressRef, progressData);
+        setLearningProgress(progressData);
+        console.log('Saved progress to Firestore');
+      } catch (error) {
+        console.error('Error saving progress to Firestore:', error);
+        // Continue anyway - resources are already set
+      }
+    } else {
+      console.log('Not authenticated - displaying resources without progress tracking');
     }
   };
 
@@ -447,8 +457,15 @@ const CompetencyLearningPage = () => {
             Learning Resources
           </h2>
 
-          <div className="space-y-4">
-            {resources.map((resource) => (
+          {resources.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Loading resources...
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {resources.map((resource) => (
               <div
                 key={resource.id}
                 className={`border-2 rounded-lg p-4 transition-all ${
@@ -499,7 +516,8 @@ const CompetencyLearningPage = () => {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Quiz & Assessment */}
