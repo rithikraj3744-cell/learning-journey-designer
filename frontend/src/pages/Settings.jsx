@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Bell, Lock, Palette, Globe, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Bell, Lock, Palette, Globe, Save, CheckCircle, AlertCircle, LogOut } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
+import { signOut } from 'firebase/auth';
 
 const Settings = () => {
   const { currentUser, userProfile, updateUserProfile } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [settings, setSettings] = useState({
     // Profile settings
@@ -31,6 +34,19 @@ const Settings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Handle sign out
+  const handleSignOut = async () => {
+    if (window.confirm('Are you sure you want to sign out?')) {
+      try {
+        await signOut(auth);
+        navigate('/login');
+      } catch (error) {
+        console.error('Error signing out:', error);
+        alert('Failed to sign out. Please try again.');
+      }
+    }
+  };
 
   // Load user settings when component mounts or user profile changes
   useEffect(() => {
@@ -193,6 +209,23 @@ const Settings = () => {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Account Actions */}
+                <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Account Actions
+                  </h3>
+                  <button
+                    onClick={handleSignOut}
+                    className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    Sign Out
+                  </button>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    You will be signed out of your account and redirected to the login page.
+                  </p>
                 </div>
               </div>
             )}
