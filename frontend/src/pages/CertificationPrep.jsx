@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { db, auth } from '../firebase'
 import { collection, addDoc, getDocs } from 'firebase/firestore'
+import { competencyList } from '../data'
 
 const CERTIFICATIONS = [
   {
@@ -334,15 +335,63 @@ const CertificationPrep = () => {
         return
       }
 
+      // Map certification competency names to actual competency objects from our data
+      const certCompetencyNames = cert.requiredCompetencies.map(name => name.toLowerCase());
+
+      // Find matching competencies from our competency list
+      const matchedCompetencies = competencyList.filter(comp => {
+        const compName = comp.name.toLowerCase();
+        const compKeywords = comp.keywords?.map(k => k.toLowerCase()) || [];
+
+        // Check if any cert competency matches the competency name or keywords
+        return certCompetencyNames.some(certComp =>
+          compName.includes(certComp) ||
+          certComp.includes(compName) ||
+          compKeywords.some(keyword => certComp.includes(keyword) || keyword.includes(certComp))
+        );
+      });
+
+      // If no matches found, create basic competency objects
+      const competencies = matchedCompetencies.length > 0
+        ? matchedCompetencies
+        : cert.requiredCompetencies.map((name, index) => ({
+            id: `cert-${cert.id}-${index}`,
+            name: name,
+            category: 'Certification',
+            subcategory: cert.name,
+            description: `${name} competency for ${cert.name}`,
+            difficulty: cert.level === 'Entry' ? 2 : cert.level === 'Associate' ? 3 : 4,
+            estimatedHours: 15,
+            prerequisites: [],
+            keywords: [name.toLowerCase()]
+          }));
+
+      // Calculate totals
+      const totalHours = competencies.reduce((sum, comp) => sum + (comp.estimatedHours || 15), 0);
+      const timeAvailable = 10; // Default 10 hours per week
+      const estimatedWeeks = Math.ceil(totalHours / timeAvailable);
+
       const pathData = {
-        title: `Prep for ${cert.name}`,
+        userId: auth.currentUser.uid,
+        title: `Certification preparation path for ${cert.name}`,
+        name: `Prep for ${cert.name}`,
         description: `Certification preparation path for ${cert.name}`,
         certificationId: cert.id,
-        targetCompetencies: cert.requiredCompetencies,
-        createdAt: new Date(),
-        status: 'active',
+        competencies: competencies, // Full competency objects
+        targetCompetencies: cert.requiredCompetencies, // Original string names
+        totalHours,
+        estimatedWeeks,
+        timeAvailable,
+        preferences: {
+          learningStyle: 'visual',
+          preferredResourceTypes: ['video', 'course', 'tutorial']
+        },
         progress: readinessScores[cert.id]?.percentage || 0,
-        type: 'certification'
+        completedCompetencies: [],
+        type: 'certification',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
 
       // Add to Firestore
