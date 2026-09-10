@@ -171,7 +171,7 @@ const Assessment = () => {
       } else {
         wrongAnswers.push({
           question: q.question,
-          yourAnswer: q.options[answers[index]],
+          yourAnswer: q.options[answers[index]] || 'Not answered',
           correctAnswer: q.options[q.correct_answer],
           topic: q.topic || selectedCompetency?.name
         })
@@ -181,6 +181,13 @@ const Assessment = () => {
     const finalScore = Math.round((correct / questions.length) * 100)
     setScore(finalScore)
     setShowResults(true)
+
+    console.log('Assessment completed:', {
+      score: finalScore,
+      correct,
+      total: questions.length,
+      wrongAnswers: wrongAnswers.length
+    })
 
     // Save score to Firestore if user is authenticated
     if (currentUser && selectedCompetency) {
@@ -421,6 +428,17 @@ const Assessment = () => {
       {/* Results */}
       {showResults && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          {/* Back Button */}
+          <button
+            onClick={handleRestart}
+            className="mb-6 flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Assessment Selection
+          </button>
+
           <div className="text-center mb-6">
             <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
               score >= 70 ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'
@@ -431,14 +449,34 @@ const Assessment = () => {
                 <XCircle className="w-10 h-10 text-red-600 dark:text-red-400" />
               )}
             </div>
-            <h2 className="text-2xl font-bold mb-2">Your Score: {score}%</h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              {score >= 90 ? 'Excellent! You have mastered this topic!' :
-               score >= 70 ? 'Good job! You have a solid understanding.' :
-               score >= 50 ? 'Not bad, but there\'s room for improvement.' :
-               'Keep learning! Practice makes perfect.'}
+            <h2 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Your Score: {score}%</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              {score >= 90 ? '🎉 Excellent! You have mastered this topic!' :
+               score >= 70 ? '👍 Good job! You have a solid understanding.' :
+               score >= 50 ? '📚 Not bad, but there\'s room for improvement.' :
+               '💪 Keep learning! Practice makes perfect.'}
             </p>
+            <div className="mt-4 inline-block px-6 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full">
+              <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                {questions.filter((_, i) => answers[i] === questions[i].correct_answer).length} / {questions.length} Correct
+              </span>
+            </div>
           </div>
+
+          {/* Performance Summary */}
+          {score < 70 && (
+            <div className="mb-6 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+              <h3 className="font-semibold text-orange-900 dark:text-orange-200 mb-2 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                Areas to Focus On
+              </h3>
+              <p className="text-sm text-orange-800 dark:text-orange-300">
+                Review the questions you missed below. Practice these topics to improve your understanding of {selectedCompetency?.name}.
+              </p>
+            </div>
+          )}
 
           {/* Detailed Results */}
           <div className="space-y-4 mb-6">
@@ -455,24 +493,29 @@ const Assessment = () => {
                 >
                   <div className="flex items-start gap-2 mb-2">
                     {isCorrect ? (
-                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                     ) : (
-                      <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1">
-                      <p className="font-medium mb-1">{q.question}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Your answer: <span className="font-medium">{q.options[answers[index]]}</span>
+                      <p className="font-medium mb-1 text-gray-900 dark:text-white">{q.question}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
+                        Your answer: <span className={`font-medium ${isCorrect ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                          {q.options[answers[index]] || 'Not answered'}
+                        </span>
                       </p>
                       {!isCorrect && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
                           Correct answer: <span className="font-medium text-green-700 dark:text-green-400">{q.options[q.correct_answer]}</span>
                         </p>
                       )}
                       {q.explanation && (
-                        <p className="text-sm mt-2 text-gray-700 dark:text-gray-300">
-                          💡 {q.explanation}
-                        </p>
+                        <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
+                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">💡 Explanation:</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            {q.explanation}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -481,12 +524,21 @@ const Assessment = () => {
             })}
           </div>
 
-          <button
-            onClick={handleRestart}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg"
-          >
-            Take Another Quiz
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleRestart}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Take Another Assessment
+            </button>
+            <button
+              onClick={() => window.location.href = '/knowledge-graph'}
+              className="px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold transition-colors"
+            >
+              View Knowledge Graph
+            </button>
+          </div>
         </div>
       )}
     </div>
