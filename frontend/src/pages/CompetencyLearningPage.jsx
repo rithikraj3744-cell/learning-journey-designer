@@ -30,6 +30,60 @@ const CompetencyLearningPage = () => {
   const [loading, setLoading] = useState(true);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
+  // Map knowledge graph IDs to competency data IDs
+  const mapKnowledgeGraphIdToCompetency = (graphId) => {
+    // First, try exact match
+    let comp = competencyList.find(c => c.id === graphId);
+    if (comp) return comp;
+
+    // Try matching by name (case-insensitive, with common variations)
+    const normalizedGraphId = graphId.toLowerCase().replace(/-/g, ' ');
+
+    comp = competencyList.find(c => {
+      const normalizedName = c.name.toLowerCase();
+      const normalizedKeywords = c.keywords?.map(k => k.toLowerCase()) || [];
+
+      return normalizedName.includes(normalizedGraphId) ||
+             normalizedGraphId.includes(normalizedName) ||
+             normalizedKeywords.some(k => k.includes(normalizedGraphId) || normalizedGraphId.includes(k));
+    });
+
+    if (comp) return comp;
+
+    // Manual mappings for common knowledge graph IDs
+    const manualMappings = {
+      'html-css': 'comp-007',
+      'javascript': 'comp-002',
+      'react': 'comp-003',
+      'vue': 'comp-004',
+      'angular': 'comp-005',
+      'typescript': 'comp-006',
+      'python': 'comp-001',
+      'node': 'comp-010',
+      'nodejs': 'comp-010',
+      'express': 'comp-011',
+      'sql': 'comp-012',
+      'mongodb': 'comp-013',
+      'databases': 'comp-012',
+      'api-design': 'comp-014',
+      'rest-api': 'comp-014',
+      'graphql': 'comp-015',
+      'git': 'comp-016',
+      'docker': 'comp-017',
+      'kubernetes': 'comp-018',
+      'aws': 'comp-019',
+      'ui-ux': 'comp-020',
+      'responsive-design': 'comp-021'
+    };
+
+    const mappedId = manualMappings[graphId.toLowerCase()];
+    if (mappedId) {
+      return competencyList.find(c => c.id === mappedId);
+    }
+
+    return null;
+  };
+
   useEffect(() => {
     loadCompetencyAndProgress();
   }, [competencyId, currentUser]);
@@ -38,10 +92,11 @@ const CompetencyLearningPage = () => {
     try {
       setLoading(true);
 
-      // Load competency data
-      const comp = competencyList.find(c => c.id === competencyId);
+      // Map knowledge graph ID to actual competency
+      const comp = mapKnowledgeGraphIdToCompetency(competencyId);
       if (!comp) {
-        navigate('/knowledge-graph');
+        console.error('Competency not found for ID:', competencyId);
+        setLoading(false);
         return;
       }
       setCompetency(comp);
@@ -53,7 +108,7 @@ const CompetencyLearningPage = () => {
           'users',
           auth.currentUser.uid,
           'competencyProgress',
-          competencyId
+          comp.id // Use the mapped competency ID
         );
         const progressDoc = await getDoc(progressRef);
 
@@ -141,7 +196,7 @@ const CompetencyLearningPage = () => {
   };
 
   const markResourceComplete = async (resourceId) => {
-    if (!auth.currentUser || !learningProgress) return;
+    if (!auth.currentUser || !learningProgress || !competency) return;
 
     const updatedResources = resources.map(r =>
       r.id === resourceId ? { ...r, completed: true } : r
@@ -157,7 +212,7 @@ const CompetencyLearningPage = () => {
       'users',
       auth.currentUser.uid,
       'competencyProgress',
-      competencyId
+      competency.id // Use the actual competency ID from data
     );
     await updateDoc(progressRef, {
       resources: updatedResources,
@@ -189,13 +244,13 @@ const CompetencyLearningPage = () => {
   const enhanceLearning = async () => {
     // Reset progress and generate new resources
     if (window.confirm('This will reset your current progress and generate new learning resources. Continue?')) {
-      if (auth.currentUser) {
+      if (auth.currentUser && competency) {
         const progressRef = doc(
           db,
           'users',
           auth.currentUser.uid,
           'competencyProgress',
-          competencyId
+          competency.id
         );
         await updateDoc(progressRef, {
           status: 'enhancing',
