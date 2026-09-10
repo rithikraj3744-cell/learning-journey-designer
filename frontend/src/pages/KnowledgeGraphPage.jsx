@@ -214,9 +214,9 @@ const KnowledgeGraphPage = () => {
   const handleNodeClick = (node) => {
     setSelectedNode(node)
 
-    // Navigate to competency detail if it's a competency
+    // Navigate to competency learning page if it's a competency
     if (node.type === 'competency') {
-      navigate(`/competencies/${node.id}`)
+      navigate(`/learn/${node.id}`)
     }
   }
 

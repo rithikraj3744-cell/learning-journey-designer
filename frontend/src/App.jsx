@@ -13,6 +13,7 @@ import Analytics from './pages/Analytics'
 import CompetencyExplorer from './pages/CompetencyExplorer'
 import CompetenciesWithTest from './pages/CompetenciesWithTest'
 import CompetencyDetail from './pages/CompetencyDetail'
+import CompetencyLearningPage from './pages/CompetencyLearningPage'
 import AssessmentWelcome from './pages/AssessmentWelcome'
 import AssessmentTest from './pages/AssessmentTest'
 import AssessmentResults from './pages/AssessmentResults'
@@ -75,6 +76,9 @@ function App() {
 
         {/* Knowledge Graph Route */}
         <Route path="/knowledge-graph" element={<DashboardLayout><KnowledgeGraphPage /></DashboardLayout>} />
+
+        {/* Competency Learning Route */}
+        <Route path="/learn/:competencyId" element={<DashboardLayout><CompetencyLearningPage /></DashboardLayout>} />
 
         {/* New MVP Features */}
         <Route path="/goals" element={<DashboardLayout><GoalSetting /></DashboardLayout>} />
