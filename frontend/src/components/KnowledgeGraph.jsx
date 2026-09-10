@@ -144,10 +144,11 @@ const KnowledgeGraph = ({
       nodesByLevel[level].push(node)
     })
 
-    // Position nodes with better spacing
-    const levelWidth = 300
-    const nodeHeight = 140
-    const maxLevel = Math.max(...Object.keys(nodesByLevel).map(Number))
+    // Position nodes with much better spacing
+    const levelWidth = 400 // Increased horizontal spacing
+    const nodeHeight = 180 // Increased vertical spacing
+    const startX = 150
+    const startY = 100
 
     Object.keys(nodesByLevel).forEach(level => {
       const levelNodes = nodesByLevel[level]
@@ -160,10 +161,14 @@ const KnowledgeGraph = ({
         return catA.localeCompare(catB)
       })
 
+      // Center nodes vertically for this level
+      const totalHeight = levelNodes.length * nodeHeight
+      const offsetY = 0 // Can adjust for centering
+
       levelNodes.forEach((node, index) => {
         positions[node.id] = {
-          x: levelNum * levelWidth + 200,
-          y: (index + 1) * nodeHeight + 80,
+          x: levelNum * levelWidth + startX,
+          y: index * nodeHeight + startY + offsetY,
           vx: 0,
           vy: 0
         }
@@ -355,33 +360,55 @@ const KnowledgeGraph = ({
           ctx.fillText('✓', pos.x + nodeRadius - 8, pos.y - nodeRadius + 8)
         }
 
-        // Draw label with better typography
-        ctx.fillStyle = '#F9FAFB'
-        ctx.font = `${isSelected ? 'bold' : '600'} 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`
+        // Draw label with better typography and background
+        ctx.fillStyle = '#FFFFFF'
+        ctx.font = `${isSelected ? 'bold' : '600'} 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'top'
+
+        const label = node.label || node.id
+        const maxWidth = 160
+        const lines = []
+        const words = label.split(' ')
+        let currentLine = ''
+
+        // Word wrap
+        words.forEach((word) => {
+          const testLine = currentLine + (currentLine ? ' ' : '') + word
+          const metrics = ctx.measureText(testLine)
+          if (metrics.width > maxWidth && currentLine) {
+            lines.push(currentLine)
+            currentLine = word
+          } else {
+            currentLine = testLine
+          }
+        })
+        if (currentLine) lines.push(currentLine)
+
+        // Draw text background for better readability
+        const lineHeight = 18
+        const textPadding = 8
+        const bgWidth = Math.max(...lines.map(line => ctx.measureText(line).width)) + textPadding * 2
+        const bgHeight = lines.length * lineHeight + textPadding * 2
+        const bgX = pos.x - bgWidth / 2
+        const bgY = pos.y + nodeRadius + 8
+
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.95)'
+        ctx.beginPath()
+        ctx.roundRect(bgX, bgY, bgWidth, bgHeight, 6)
+        ctx.fill()
+
+        // Draw text with shadow
         ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
         ctx.shadowBlur = 4
         ctx.shadowOffsetY = 1
+        ctx.fillStyle = '#FFFFFF'
 
-        const label = node.label || node.id
-        const maxWidth = 140
-        const words = label.split(' ')
-        let line = ''
-        let y = pos.y + nodeRadius + 12
-
-        words.forEach((word, i) => {
-          const testLine = line + (line ? ' ' : '') + word
-          const metrics = ctx.measureText(testLine)
-          if (metrics.width > maxWidth && line) {
-            ctx.fillText(line, pos.x, y)
-            line = word
-            y += 18
-          } else {
-            line = testLine
-          }
+        let textY = bgY + textPadding + 4
+        lines.forEach(line => {
+          ctx.fillText(line, pos.x, textY)
+          textY += lineHeight
         })
-        ctx.fillText(line, pos.x, y)
 
         ctx.shadowColor = 'transparent'
       })
