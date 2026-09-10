@@ -270,14 +270,14 @@ const CompetencyLearningPage = () => {
 
   const generateQuiz = async () => {
     setGeneratingQuiz(true);
-    // Simulate quiz generation
+    // Navigate directly to the assessment page with competency parameter for quiz generation
     setTimeout(() => {
-      navigate(`/competencies/${competencyId}/quiz`);
-    }, 1000);
+      navigate(`/assessment?competency=${competencyId}&type=quiz`);
+    }, 500);
   };
 
   const takeAssessment = () => {
-    navigate(`/assessment?competency=${competencyId}`);
+    navigate(`/assessment?competency=${competencyId}&type=assessment`);
   };
 
   const enhanceLearning = async () => {
