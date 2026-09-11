@@ -69,17 +69,21 @@ Difficulty level: {difficulty}
 
 For each question, provide:
 1. The question text
-2. Four answer options (A, B, C, D)
-3. The correct answer
+2. Four answer options
+3. The correct answer index (0-3)
 4. A brief explanation
 
 Format the response as a JSON array of objects with this structure:
 [{{
     "question": "question text",
-    "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
-    "correct_answer": "A",
+    "options": ["option1", "option2", "option3", "option4"],
+    "correct_answer": 0,
     "explanation": "why this is correct"
 }}]
+
+IMPORTANT:
+- correct_answer must be a number from 0 to 3 (not a letter)
+- options should be plain text without "A)", "B)", etc. prefixes
 
 Return ONLY the JSON array, no additional text."""
 
@@ -94,6 +98,24 @@ Return ONLY the JSON array, no additional text."""
         result_text = re.sub(r'```json\s*|\s*```', '', result_text)
 
         questions = json.loads(result_text)
+
+        # Validate and fix correct_answer format
+        for question in questions:
+            # If correct_answer is a letter, convert to index
+            if isinstance(question.get('correct_answer'), str):
+                letter = question['correct_answer'].upper().strip()
+                if letter in ['A', 'B', 'C', 'D']:
+                    question['correct_answer'] = ord(letter) - ord('A')
+                else:
+                    question['correct_answer'] = 0  # Default to first option
+
+            # Ensure correct_answer is an integer
+            question['correct_answer'] = int(question['correct_answer'])
+
+            # Remove A), B), C), D) prefixes from options if present
+            question['options'] = [
+                re.sub(r'^[A-D]\)\s*', '', opt) for opt in question['options']
+            ]
 
         return jsonify({
             'questions': questions,
