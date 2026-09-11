@@ -3,26 +3,48 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
-  }
-
   * {
     @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  /* Better text rendering on all devices */
+  h1, h2, h3, h4, h5, h6 {
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Ensure proper viewport height on mobile browsers */
+  #root {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 }
 
 @layer components {
   .btn-primary {
     @apply bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0;
+    @apply sm:py-2.5 sm:px-5;
   }
 
   .btn-secondary {
     @apply bg-gray-200 hover:bg-gray-300 active:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-600 dark:active:bg-gray-500 text-gray-900 dark:text-gray-100 font-medium py-2 px-4 rounded-lg transition-all duration-200 hover:shadow-md;
+    @apply sm:py-2.5 sm:px-5;
   }
 
   .card {
-    @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-xl;
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-xl;
+    @apply sm:p-5 md:p-6;
   }
 
   .card-interactive {
@@ -30,7 +52,10 @@
   }
 
   .input-field {
-    @apply w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-all duration-200;
+    @apply w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-all duration-200;
+    @apply sm:px-4 sm:py-2.5;
+    /* Prevent zoom on iOS */
+    font-size: 16px;
   }
 
   .nav-link {
@@ -47,6 +72,58 @@
 
   .skeleton {
     @apply animate-pulse bg-gray-200 dark:bg-gray-700 rounded;
+  }
+
+  /* Responsive container */
+  .container-responsive {
+    @apply w-full mx-auto px-4;
+    @apply sm:px-6;
+    @apply lg:px-8;
+    @apply max-w-7xl;
+  }
+
+  /* Responsive text sizes */
+  .heading-1 {
+    @apply text-2xl font-bold text-gray-900 dark:text-white;
+    @apply sm:text-3xl;
+    @apply md:text-4xl;
+  }
+
+  .heading-2 {
+    @apply text-xl font-bold text-gray-900 dark:text-white;
+    @apply sm:text-2xl;
+    @apply md:text-3xl;
+  }
+
+  .heading-3 {
+    @apply text-lg font-semibold text-gray-900 dark:text-white;
+    @apply sm:text-xl;
+    @apply md:text-2xl;
+  }
+
+  /* Responsive grid layouts */
+  .grid-responsive-1 {
+    @apply grid grid-cols-1 gap-4;
+    @apply sm:gap-5;
+    @apply md:gap-6;
+  }
+
+  .grid-responsive-2 {
+    @apply grid grid-cols-1 gap-4;
+    @apply sm:grid-cols-2 sm:gap-5;
+    @apply md:gap-6;
+  }
+
+  .grid-responsive-3 {
+    @apply grid grid-cols-1 gap-4;
+    @apply sm:grid-cols-2 sm:gap-5;
+    @apply lg:grid-cols-3 lg:gap-6;
+  }
+
+  .grid-responsive-4 {
+    @apply grid grid-cols-1 gap-4;
+    @apply sm:grid-cols-2 sm:gap-5;
+    @apply lg:grid-cols-4 lg:gap-6;
   }
 }
 
@@ -133,5 +210,136 @@
   /* Smooth scrolling */
   .smooth-scroll {
     scroll-behavior: smooth;
+  }
+
+  /* Mobile-specific utilities */
+  @media (max-width: 640px) {
+    .mobile-compact {
+      @apply px-3 py-2;
+    }
+
+    .mobile-full-width {
+      @apply w-full;
+    }
+
+    .mobile-text-sm {
+      @apply text-sm;
+    }
+
+    .mobile-stack {
+      @apply flex-col;
+    }
+
+    /* Reduce padding in cards */
+    .card {
+      @apply p-4;
+    }
+
+    /* Stack buttons vertically */
+    .button-group {
+      @apply flex-col space-y-2;
+    }
+
+    /* Full width modals on mobile */
+    .modal-content {
+      @apply w-full mx-4;
+    }
+  }
+
+  /* Tablet optimizations */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .tablet-grid-2 {
+      @apply grid-cols-2;
+    }
+
+    .tablet-text-base {
+      @apply text-base;
+    }
+  }
+
+  /* Desktop optimizations */
+  @media (min-width: 1025px) {
+    .desktop-grid-3 {
+      @apply grid-cols-3;
+    }
+
+    .desktop-grid-4 {
+      @apply grid-cols-4;
+    }
+
+    .desktop-sidebar-fixed {
+      @apply sticky top-0;
+    }
+  }
+
+  /* Prevent text zoom on iOS */
+  input, textarea, select {
+    font-size: 16px;
+  }
+
+  /* Better touch feedback */
+  button, a {
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.1);
+    touch-action: manipulation;
+  }
+
+  /* Prevent pull-to-refresh on mobile */
+  body {
+    overscroll-behavior-y: contain;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Custom scrollbar for desktop */
+  @media (min-width: 1025px) {
+    .scrollbar-custom::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .scrollbar-custom::-webkit-scrollbar-track {
+      @apply bg-gray-100 dark:bg-gray-800;
+    }
+
+    .scrollbar-custom::-webkit-scrollbar-thumb {
+      @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+    }
+
+    .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+      @apply bg-gray-400 dark:bg-gray-500;
+    }
+  }
+
+  /* Responsive spacing utilities */
+  .spacing-responsive {
+    @apply space-y-4 sm:space-y-5 md:space-y-6;
+  }
+
+  /* Safe area support for iOS notch */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Responsive max-width for content */
+  .content-max-width {
+    @apply max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-4xl xl:max-w-6xl;
+  }
+
+  /* Prevent horizontal scroll */
+  .prevent-horizontal-scroll {
+    overflow-x: hidden;
+    width: 100%;
   }
 }
