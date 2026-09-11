@@ -5,14 +5,13 @@ services:
     region: oregon
     plan: free
     branch: main
-    buildCommand: cd backend/deploy && pip install -r requirements.txt
-    startCommand: cd backend/deploy && gunicorn --chdir /opt/render/project/src/backend/deploy app:app --bind 0.0.0.0:$PORT
+    rootDir: backend/deploy
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: FLASK_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: GEMINI_API_KEY
         sync: false
